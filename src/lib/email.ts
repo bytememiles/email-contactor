@@ -12,10 +12,16 @@ export interface EmailConfig {
 
 export interface EmailData {
   to: string;
+  cc?: string;
   subject: string;
   text?: string;
   html?: string;
   from?: string;
+  attachments?: Array<{
+    filename: string;
+    content: string;
+    encoding: string;
+  }>;
 }
 
 export function createEmailTransporter(): nodemailer.Transporter {
@@ -39,9 +45,11 @@ export async function sendEmail(emailData: EmailData): Promise<boolean> {
     const mailOptions = {
       from: emailData.from || process.env.MAIL_FROM_ADDRESS,
       to: emailData.to,
+      cc: emailData.cc,
       subject: emailData.subject,
       text: emailData.text,
       html: emailData.html,
+      attachments: emailData.attachments,
     };
 
     const result = await transporter.sendMail(mailOptions);
