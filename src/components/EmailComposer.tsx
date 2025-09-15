@@ -181,6 +181,7 @@ export default function EmailComposer({ onClose, onSend }: EmailComposerProps) {
     }
 
     const { html } = convertMarkdownToEmail(markdown);
+    const styledHtml = addEmailStyles(html);
 
     return (
       <Box
@@ -193,8 +194,18 @@ export default function EmailComposer({ onClose, onSend }: EmailComposerProps) {
           borderRadius: 1,
           backgroundColor: 'background.paper',
         }}
-        dangerouslySetInnerHTML={{ __html: html }}
-      />
+      >
+        <iframe
+          srcDoc={styledHtml}
+          style={{
+            width: '100%',
+            height: '100%',
+            border: 'none',
+            backgroundColor: 'white',
+          }}
+          title="Email Preview"
+        />
+      </Box>
     );
   };
 
