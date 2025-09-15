@@ -223,18 +223,12 @@ export default function EmailComposer({ onClose, onSend }: EmailComposerProps) {
   return (
     <>
       <Paper
-        elevation={8}
+        elevation={2}
         sx={{
-          position: 'fixed',
-          bottom: 0,
-          right: 20,
-          width: 600,
-          maxWidth: 'calc(100vw - 40px)',
-          height: 500,
-          maxHeight: 'calc(100vh - 40px)',
+          margin: 3,
+          height: 'calc(100vh - 76px)', // Account for margins only
           display: 'flex',
           flexDirection: 'column',
-          zIndex: 1300,
         }}
       >
         {/* Header */}
@@ -246,12 +240,18 @@ export default function EmailComposer({ onClose, onSend }: EmailComposerProps) {
             px: 2,
           }}
         >
-          <Typography variant="h6" sx={{ flexGrow: 1, fontSize: '14px' }}>
-            New Message
+          <Typography variant="h6" sx={{ flexGrow: 1, fontSize: '16px' }}>
+            Compose Email
           </Typography>
-          <IconButton size="small" sx={{ color: 'inherit' }} onClick={onClose}>
-            <Close fontSize="small" />
-          </IconButton>
+          {onClose && (
+            <IconButton
+              size="small"
+              sx={{ color: 'inherit' }}
+              onClick={onClose}
+            >
+              <Close fontSize="small" />
+            </IconButton>
+          )}
         </Toolbar>
 
         <Divider />
@@ -303,7 +303,7 @@ export default function EmailComposer({ onClose, onSend }: EmailComposerProps) {
               <MDEditor
                 value={markdown}
                 onChange={(val) => setMarkdown(val || '')}
-                height={250}
+                height={400}
                 preview="edit"
                 hideToolbar
                 visibleDragbar={false}
