@@ -13,14 +13,14 @@ import {
   Alert,
   Snackbar,
   CircularProgress,
-  Tabs,
-  Tab,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
-import { Close, Send, AttachFile, Preview, Edit } from '@mui/icons-material';
+import { Close, Send, AttachFile } from '@mui/icons-material';
 import MDEditor from '@uiw/react-md-editor';
 import { convertMarkdownToEmail, addEmailStyles } from '@/lib/markdown';
 
@@ -36,30 +36,13 @@ interface EmailComposerProps {
   onSend?: (emailData: EmailData) => void;
 }
 
-interface TabPanelProps {
-  children?: React.ReactNode;
-  index: number;
-  value: number;
-}
-
-function TabPanel({ children, value, index }: TabPanelProps) {
-  return (
-    <div
-      role="tabpanel"
-      hidden={value !== index}
-      id={`email-tabpanel-${index}`}
-      aria-labelledby={`email-tab-${index}`}
-    >
-      {value === index && <Box sx={{ p: 0 }}>{children}</Box>}
-    </div>
-  );
-}
-
 export default function EmailComposer({ onClose, onSend }: EmailComposerProps) {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+
   const [to, setTo] = useState('');
   const [subject, setSubject] = useState('');
   const [markdown, setMarkdown] = useState('');
-  const [tabValue, setTabValue] = useState(0);
   const [isSending, setIsSending] = useState(false);
   const [sendTimer, setSendTimer] = useState<NodeJS.Timeout | null>(null);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
@@ -74,10 +57,6 @@ export default function EmailComposer({ onClose, onSend }: EmailComposerProps) {
   });
 
   const sendTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
-    setTabValue(newValue);
-  };
 
   const showNotification = (
     message: string,
@@ -207,8 +186,7 @@ export default function EmailComposer({ onClose, onSend }: EmailComposerProps) {
       <Box
         sx={{
           p: 2,
-          minHeight: 200,
-          maxHeight: 400,
+          height: '100%',
           overflow: 'auto',
           border: '1px solid',
           borderColor: 'divider',
@@ -223,12 +201,12 @@ export default function EmailComposer({ onClose, onSend }: EmailComposerProps) {
   return (
     <>
       <Paper
-        elevation={2}
         sx={{
-          margin: 3,
-          height: 'calc(100vh - 76px)', // Account for margins only
+          height: 'calc(100vh - 48px)',
           display: 'flex',
           flexDirection: 'column',
+          borderRadius: 0,
+          boxShadow: 'none',
         }}
       >
         {/* Header */}
@@ -238,6 +216,8 @@ export default function EmailComposer({ onClose, onSend }: EmailComposerProps) {
             color: 'primary.contrastText',
             minHeight: '48px !important',
             px: 2,
+            borderTopLeftRadius: 5,
+            borderTopRightRadius: 5,
           }}
         >
           <Typography variant="h6" sx={{ flexGrow: 1, fontSize: '16px' }}>
@@ -257,7 +237,9 @@ export default function EmailComposer({ onClose, onSend }: EmailComposerProps) {
         <Divider />
 
         {/* Email Fields */}
-        <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
+        <Box
+          sx={{ p: { xs: 1, sm: 2 }, borderBottom: 1, borderColor: 'divider' }}
+        >
           <TextField
             fullWidth
             size="small"
@@ -266,6 +248,14 @@ export default function EmailComposer({ onClose, onSend }: EmailComposerProps) {
             onChange={(e) => setTo(e.target.value)}
             margin="dense"
             variant="outlined"
+            sx={{
+              '& .MuiInputBase-input': {
+                fontSize: { xs: '14px', sm: '16px' },
+              },
+              '& .MuiInputLabel-root': {
+                fontSize: { xs: '14px', sm: '16px' },
+              },
+            }}
           />
           <TextField
             fullWidth
@@ -275,52 +265,125 @@ export default function EmailComposer({ onClose, onSend }: EmailComposerProps) {
             onChange={(e) => setSubject(e.target.value)}
             margin="dense"
             variant="outlined"
+            sx={{
+              '& .MuiInputBase-input': {
+                fontSize: { xs: '14px', sm: '16px' },
+              },
+              '& .MuiInputLabel-root': {
+                fontSize: { xs: '14px', sm: '16px' },
+              },
+            }}
           />
         </Box>
 
-        {/* Content Tabs */}
-        <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-          <Tabs value={tabValue} onChange={handleTabChange}>
-            <Tab
-              icon={<Edit fontSize="small" />}
-              label="Edit"
-              iconPosition="start"
-              sx={{ minHeight: 40 }}
-            />
-            <Tab
-              icon={<Preview fontSize="small" />}
-              label="Preview"
-              iconPosition="start"
-              sx={{ minHeight: 40 }}
-            />
-          </Tabs>
-        </Box>
-
-        {/* Content Area */}
-        <Box sx={{ flexGrow: 1, overflow: 'hidden' }}>
-          <TabPanel value={tabValue} index={0}>
-            <Box sx={{ height: '100%', p: 1 }}>
+        {/* Content Area - Responsive Layout */}
+        <Box
+          sx={{
+            display: 'flex',
+            flexGrow: 1,
+            overflow: 'hidden',
+            flexDirection: { xs: 'column', md: 'row' }, // Stack on mobile, side-by-side on desktop
+          }}
+        >
+          {/* Editor Side */}
+          <Box
+            sx={{
+              flex: 1,
+              borderRight: { xs: 0, md: 1 },
+              borderBottom: { xs: 1, md: 0 },
+              borderColor: 'divider',
+              minHeight: { xs: '50%', md: 'auto' },
+            }}
+          >
+            <Box
+              sx={{
+                p: { xs: 0.5, sm: 1 },
+                borderBottom: 1,
+                borderColor: 'divider',
+                backgroundColor: 'grey.50',
+                display: 'flex',
+                alignItems: 'center',
+                minHeight: { xs: 32, sm: 40 },
+              }}
+            >
+              <Typography
+                variant="subtitle2"
+                color="text.secondary"
+                sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
+              >
+                ✍️ Markdown Editor
+              </Typography>
+            </Box>
+            <Box
+              sx={{
+                height: { xs: 'calc(100% - 32px)', sm: 'calc(100% - 40px)' },
+                p: { xs: 0.5, sm: 1 },
+              }}
+            >
               <MDEditor
                 value={markdown}
                 onChange={(val) => setMarkdown(val || '')}
-                height={400}
+                height="100%"
                 preview="edit"
                 hideToolbar
                 visibleDragbar={false}
                 data-color-mode="light"
+                style={{
+                  fontSize: isMobile ? '14px' : '16px',
+                }}
               />
             </Box>
-          </TabPanel>
-          <TabPanel value={tabValue} index={1}>
-            <Box sx={{ p: 2, height: '100%', overflow: 'auto' }}>
+          </Box>
+
+          {/* Preview Side */}
+          <Box
+            sx={{
+              flex: 1,
+              minHeight: { xs: '50%', md: 'auto' },
+            }}
+          >
+            <Box
+              sx={{
+                p: { xs: 0.5, sm: 1 },
+                borderBottom: 1,
+                borderColor: 'divider',
+                backgroundColor: 'grey.50',
+                display: 'flex',
+                alignItems: 'center',
+                minHeight: { xs: 32, sm: 40 },
+              }}
+            >
+              <Typography
+                variant="subtitle2"
+                color="text.secondary"
+                sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
+              >
+                👁️ Live Preview
+              </Typography>
+            </Box>
+            <Box
+              sx={{
+                p: 1,
+                height: { xs: 'calc(100% - 32px)', sm: 'calc(100% - 40px)' },
+                overflow: 'auto',
+                fontSize: { xs: '14px', sm: '16px' },
+              }}
+            >
               {renderPreview()}
             </Box>
-          </TabPanel>
+          </Box>
         </Box>
 
         {/* Footer */}
-        <Box sx={{ p: 2, borderTop: 1, borderColor: 'divider' }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Box sx={{ p: { xs: 1, sm: 2 }, borderTop: 1, borderColor: 'divider' }}>
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1,
+              flexDirection: { xs: 'column', sm: 'row' },
+            }}
+          >
             <Button
               variant="contained"
               startIcon={
@@ -332,8 +395,11 @@ export default function EmailComposer({ onClose, onSend }: EmailComposerProps) {
               }
               onClick={handleSend}
               disabled={!to || !subject || !markdown}
+              fullWidth={isMobile}
               sx={{
                 backgroundColor: isSending ? 'warning.main' : 'primary.main',
+                fontSize: { xs: '14px', sm: '16px' },
+                minHeight: { xs: 40, sm: 36 },
                 '&:hover': {
                   backgroundColor: isSending ? 'warning.dark' : 'primary.dark',
                 },
@@ -342,7 +408,13 @@ export default function EmailComposer({ onClose, onSend }: EmailComposerProps) {
               {isSending ? 'Cancel Send' : 'Send'}
             </Button>
 
-            <IconButton size="small" disabled>
+            <IconButton
+              size="small"
+              disabled
+              sx={{
+                display: { xs: 'none', sm: 'inline-flex' }, // Hide on mobile
+              }}
+            >
               <AttachFile fontSize="small" />
             </IconButton>
           </Box>

@@ -20,7 +20,14 @@ export default function Home() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <Box sx={{ flexGrow: 1, minHeight: '100vh', backgroundColor: '#f5f5f5' }}>
+      <Box
+        sx={{
+          flexGrow: 1,
+          minHeight: '100vh',
+          backgroundColor: '#f5f5f5',
+          p: 3,
+        }}
+      >
         {/* Email Composer as Main Content */}
         <EmailComposer />
       </Box>
