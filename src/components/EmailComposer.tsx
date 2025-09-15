@@ -52,6 +52,8 @@ export default function EmailComposer({ onClose, onSend }: EmailComposerProps) {
   const [countdown, setCountdown] = useState(0);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [attachments, setAttachments] = useState<File[]>([]);
+  const [previewFile, setPreviewFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string>('');
   const [notification, setNotification] = useState<{
     open: boolean;
     message: string;
@@ -93,6 +95,42 @@ export default function EmailComposer({ onClose, onSend }: EmailComposerProps) {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
+  // Preview functions
+  const handlePreviewFile = (file: File) => {
+    setPreviewFile(file);
+    const url = URL.createObjectURL(file);
+    setPreviewUrl(url);
+  };
+
+  const handleClosePreview = () => {
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+    }
+    setPreviewFile(null);
+    setPreviewUrl('');
+  };
+
+  const isImageFile = (file: File) => file.type.startsWith('image/');
+  const isPdfFile = (file: File) => file.type === 'application/pdf';
+  const isDocFile = (file: File) =>
+    file.type.includes('word') ||
+    file.type.includes('document') ||
+    file.name.endsWith('.doc') ||
+    file.name.endsWith('.docx');
+
+  const getFileIcon = (file: File) => {
+    if (isImageFile(file)) return '🖼️';
+    if (isPdfFile(file)) return '📄';
+    if (isDocFile(file)) return '📝';
+    if (file.type.includes('video')) return '🎥';
+    if (file.type.includes('audio')) return '🎵';
+    if (file.type.includes('spreadsheet') || file.name.includes('.xlsx'))
+      return '📊';
+    if (file.type.includes('presentation') || file.name.includes('.pptx'))
+      return '📈';
+    return '📎';
+  };
+
   const showNotification = (
     message: string,
     severity: 'success' | 'error' | 'info'
@@ -109,16 +147,25 @@ export default function EmailComposer({ onClose, onSend }: EmailComposerProps) {
       const { html, text } = convertMarkdownToEmail(markdown);
       const styledHtml = addEmailStyles(html);
 
-      // Process attachments
+      // Process attachments - convert to base64 properly for browser
       const processedAttachments = await Promise.all(
         attachments.map(async (file) => {
-          const arrayBuffer = await file.arrayBuffer();
-          const base64 = Buffer.from(arrayBuffer).toString('base64');
-          return {
-            filename: file.name,
-            content: base64,
-            encoding: 'base64' as const,
-          };
+          return new Promise<{
+            filename: string;
+            content: string;
+            encoding: string;
+          }>((resolve) => {
+            const reader = new FileReader();
+            reader.onload = () => {
+              const base64 = (reader.result as string).split(',')[1]; // Remove data:mime;base64, prefix
+              resolve({
+                filename: file.name,
+                content: base64,
+                encoding: 'base64',
+              });
+            };
+            reader.readAsDataURL(file);
+          });
         })
       );
 
@@ -149,6 +196,12 @@ export default function EmailComposer({ onClose, onSend }: EmailComposerProps) {
         setSubject('');
         setMarkdown('');
         setAttachments([]);
+        // Clean up any preview URLs
+        if (previewUrl) {
+          URL.revokeObjectURL(previewUrl);
+          setPreviewUrl('');
+          setPreviewFile(null);
+        }
         if (onSend) {
           onSend({
             to: toRecipients.join(','),
@@ -200,7 +253,7 @@ export default function EmailComposer({ onClose, onSend }: EmailComposerProps) {
     setIsSending(true);
     setCountdown(5);
     showNotification(
-      'Email will be sent in 3 seconds. Click send again to cancel.',
+      'Email will be sent in 5 seconds. Click send again to cancel.',
       'info'
     );
 
@@ -215,11 +268,11 @@ export default function EmailComposer({ onClose, onSend }: EmailComposerProps) {
       });
     }, 1000);
 
-    // Set 3-second delay
+    // Set 5-second delay
     const timeout = setTimeout(() => {
       clearInterval(countdownInterval);
       actualSendEmail();
-    }, 3000);
+    }, 5000);
 
     setSendTimer(timeout);
     sendTimeoutRef.current = timeout;
@@ -633,13 +686,26 @@ export default function EmailComposer({ onClose, onSend }: EmailComposerProps) {
             </Typography>
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
               {attachments.map((file, index) => (
-                <Chip
-                  key={index}
-                  label={`${file.name} (${formatFileSize(file.size)})`}
-                  onDelete={() => removeAttachment(index)}
-                  size="small"
-                  sx={{ maxWidth: 300 }}
-                />
+                <Box key={index} sx={{ position: 'relative' }}>
+                  <Chip
+                    icon={
+                      <span style={{ fontSize: '14px' }}>
+                        {getFileIcon(file)}
+                      </span>
+                    }
+                    label={`${file.name} (${formatFileSize(file.size)})`}
+                    onDelete={() => removeAttachment(index)}
+                    onClick={() => handlePreviewFile(file)}
+                    size="small"
+                    sx={{
+                      maxWidth: 300,
+                      cursor: 'pointer',
+                      '&:hover': {
+                        backgroundColor: 'action.hover',
+                      },
+                    }}
+                  />
+                </Box>
               ))}
             </Box>
           </Box>
@@ -744,6 +810,106 @@ export default function EmailComposer({ onClose, onSend }: EmailComposerProps) {
           {notification.message}
         </Alert>
       </Snackbar>
+
+      {/* File Preview Dialog */}
+      <Dialog
+        open={!!previewFile}
+        onClose={handleClosePreview}
+        maxWidth="md"
+        fullWidth
+        sx={{
+          '& .MuiDialog-paper': {
+            maxHeight: '90vh',
+          },
+        }}
+      >
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          {previewFile && (
+            <>
+              <span style={{ fontSize: '20px' }}>
+                {getFileIcon(previewFile)}
+              </span>
+              {previewFile.name}
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{ ml: 'auto' }}
+              >
+                ({formatFileSize(previewFile.size)})
+              </Typography>
+            </>
+          )}
+        </DialogTitle>
+        <DialogContent sx={{ p: 0 }}>
+          {previewFile && (
+            <Box
+              sx={{
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                minHeight: 200,
+              }}
+            >
+              {isImageFile(previewFile) ? (
+                <img
+                  src={previewUrl}
+                  alt={previewFile.name}
+                  style={{
+                    maxWidth: '100%',
+                    maxHeight: '70vh',
+                    objectFit: 'contain',
+                  }}
+                />
+              ) : isPdfFile(previewFile) ? (
+                <iframe
+                  src={previewUrl}
+                  style={{
+                    width: '100%',
+                    height: '70vh',
+                    border: 'none',
+                  }}
+                  title={previewFile.name}
+                />
+              ) : isDocFile(previewFile) ? (
+                <Box sx={{ p: 3, textAlign: 'center' }}>
+                  <Typography variant="h6" gutterBottom>
+                    📝 Document Preview
+                  </Typography>
+                  <Typography variant="body1" color="text.secondary" paragraph>
+                    Document files cannot be previewed directly in the browser.
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Filename: {previewFile.name}
+                    <br />
+                    Size: {formatFileSize(previewFile.size)}
+                    <br />
+                    Type: {previewFile.type || 'Unknown'}
+                  </Typography>
+                </Box>
+              ) : (
+                <Box sx={{ p: 3, textAlign: 'center' }}>
+                  <Typography variant="h6" gutterBottom>
+                    {getFileIcon(previewFile)} File Preview
+                  </Typography>
+                  <Typography variant="body1" color="text.secondary" paragraph>
+                    This file type cannot be previewed directly in the browser.
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Filename: {previewFile.name}
+                    <br />
+                    Size: {formatFileSize(previewFile.size)}
+                    <br />
+                    Type: {previewFile.type || 'Unknown'}
+                  </Typography>
+                </Box>
+              )}
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleClosePreview}>Close</Button>
+        </DialogActions>
+      </Dialog>
     </>
   );
 }
