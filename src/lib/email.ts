@@ -1,6 +1,32 @@
 import nodemailer from 'nodemailer';
 
+import { EmailPriority } from '@/types/email';
 import { SMTPConfig } from '@/types/smtp';
+
+// Convert priority to email headers
+function getPriorityHeaders(priority: EmailPriority) {
+  switch (priority) {
+    case 'high':
+      return {
+        'X-Priority': '1 (Highest)',
+        'X-MSMail-Priority': 'High',
+        Importance: 'High',
+      };
+    case 'low':
+      return {
+        'X-Priority': '5 (Lowest)',
+        'X-MSMail-Priority': 'Low',
+        Importance: 'Low',
+      };
+    case 'normal':
+    default:
+      return {
+        'X-Priority': '3 (Normal)',
+        'X-MSMail-Priority': 'Normal',
+        Importance: 'Normal',
+      };
+  }
+}
 
 export interface EmailConfig {
   host: string;
@@ -19,6 +45,7 @@ export interface EmailData {
   text?: string;
   html?: string;
   from?: string;
+  priority?: EmailPriority;
   attachments?: Array<{
     filename: string;
     content: string;
@@ -78,6 +105,9 @@ export async function sendEmail(emailData: EmailData): Promise<boolean> {
       text: emailData.text,
       html: emailData.html,
       attachments: emailData.attachments,
+      headers: emailData.priority
+        ? getPriorityHeaders(emailData.priority)
+        : undefined,
     };
 
     const result = await transporter.sendMail(mailOptions);

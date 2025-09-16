@@ -1,7 +1,11 @@
 import { useRef, useState } from 'react';
 
 import { addEmailStyles, convertMarkdownToEmail } from '@/lib/markdown';
-import { AttachmentData, NotificationState } from '@/types/email';
+import {
+  AttachmentData,
+  EmailPriority,
+  NotificationState,
+} from '@/types/email';
 import { SMTPConfig } from '@/types/smtp';
 
 export const useEmailSender = () => {
@@ -54,6 +58,7 @@ export const useEmailSender = () => {
     subject: string,
     markdown: string,
     attachments: File[],
+    priority?: EmailPriority,
     smtpConfig?: SMTPConfig
   ) => {
     try {
@@ -74,6 +79,7 @@ export const useEmailSender = () => {
           subject,
           html: styledHtml,
           text,
+          priority,
           attachments:
             processedAttachments.length > 0 ? processedAttachments : undefined,
           smtpConfig,
@@ -106,6 +112,7 @@ export const useEmailSender = () => {
     subject: string,
     markdown: string,
     attachments: File[],
+    priority?: EmailPriority,
     smtpConfig?: SMTPConfig,
     onSuccess?: () => void
   ) => {
@@ -136,6 +143,7 @@ export const useEmailSender = () => {
         subject,
         markdown,
         attachments,
+        priority,
         smtpConfig
       );
       if (result.success && onSuccess) {

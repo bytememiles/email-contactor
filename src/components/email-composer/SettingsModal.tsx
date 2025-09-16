@@ -72,7 +72,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const resetForm = () => {
     setFormData({
       name: '',
-      host: '',
+      host: 'smtp.gmail.com',
       port: '587',
       username: '',
       password: '',
@@ -238,7 +238,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               >
                 <TextField
                   label="Configuration Name"
-                  value={formData.name}
+                  value={formData.name || ''}
                   onChange={(e) =>
                     setFormData((prev) => ({ ...prev, name: e.target.value }))
                   }
@@ -250,7 +250,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
                 <TextField
                   label="SMTP Host"
-                  value={formData.host}
+                  value={formData.host || ''}
                   onChange={(e) =>
                     setFormData((prev) => ({ ...prev, host: e.target.value }))
                   }
@@ -263,7 +263,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
                 <TextField
                   label="Port"
-                  value={formData.port}
+                  value={formData.port || ''}
                   onChange={(e) =>
                     setFormData((prev) => ({ ...prev, port: e.target.value }))
                   }
@@ -277,7 +277,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <FormControl fullWidth size="small">
                   <InputLabel>Encryption</InputLabel>
                   <Select
-                    value={formData.encryption}
+                    value={formData.encryption || 'tls'}
                     onChange={(e) =>
                       setFormData((prev) => ({
                         ...prev,
@@ -294,7 +294,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
                 <TextField
                   label="Username"
-                  value={formData.username}
+                  value={formData.username || ''}
                   onChange={(e) =>
                     setFormData((prev) => ({
                       ...prev,
@@ -310,7 +310,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <TextField
                   label="Password"
                   type="password"
-                  value={formData.password}
+                  value={formData.password || ''}
                   onChange={(e) =>
                     setFormData((prev) => ({
                       ...prev,
@@ -325,7 +325,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
                 <TextField
                   label="From Address"
-                  value={formData.fromAddress}
+                  value={formData.fromAddress || ''}
                   onChange={(e) =>
                     setFormData((prev) => ({
                       ...prev,

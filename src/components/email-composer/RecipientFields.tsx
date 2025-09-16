@@ -1,7 +1,18 @@
 import React from 'react';
-import { Autocomplete, Box, Chip, TextField, Typography } from '@mui/material';
+import { Flag, FlagOutlined, LowPriority } from '@mui/icons-material';
+import {
+  Autocomplete,
+  Box,
+  Chip,
+  FormControl,
+  InputLabel,
+  MenuItem,
+  Select,
+  TextField,
+  Typography,
+} from '@mui/material';
 
-import { RecipientFieldsProps } from '@/types/email';
+import { EmailPriority, RecipientFieldsProps } from '@/types/email';
 import { validateEmail } from '@/utils';
 
 export const RecipientFields: React.FC<RecipientFieldsProps> = ({
@@ -13,6 +24,8 @@ export const RecipientFields: React.FC<RecipientFieldsProps> = ({
   onShowCcChange,
   subject,
   onSubjectChange,
+  priority,
+  onPriorityChange,
 }) => {
   return (
     <Box sx={{ p: { xs: 1, sm: 2 }, borderBottom: 1, borderColor: 'divider' }}>
@@ -204,6 +217,44 @@ export const RecipientFields: React.FC<RecipientFieldsProps> = ({
           },
         }}
       />
+
+      {/* Priority Selector */}
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mt: 1 }}>
+        <FormControl size="small" sx={{ minWidth: 140 }}>
+          <InputLabel>Priority</InputLabel>
+          <Select
+            value={priority || 'normal'}
+            onChange={(e) => onPriorityChange(e.target.value as EmailPriority)}
+            label="Priority"
+          >
+            <MenuItem value="low">
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <LowPriority fontSize="small" color="action" />
+                <Typography>Low</Typography>
+              </Box>
+            </MenuItem>
+            <MenuItem value="normal">
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <FlagOutlined fontSize="small" color="action" />
+                <Typography>Normal</Typography>
+              </Box>
+            </MenuItem>
+            <MenuItem value="high">
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Flag fontSize="small" color="error" />
+                <Typography>High</Typography>
+              </Box>
+            </MenuItem>
+          </Select>
+        </FormControl>
+        <Typography
+          variant="caption"
+          color="text.secondary"
+          sx={{ fontSize: '12px' }}
+        >
+          Recipients will see this priority level in their email client
+        </Typography>
+      </Box>
     </Box>
   );
 };

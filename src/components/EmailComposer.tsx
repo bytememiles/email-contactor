@@ -29,7 +29,7 @@ import {
 } from '@/components/email-composer';
 import { useEmailSender } from '@/hooks';
 import { useSMTPConfigsRedux } from '@/hooks/useSMTPConfigsRedux';
-import { EmailComposerProps } from '@/types/email';
+import { EmailComposerProps, EmailPriority } from '@/types/email';
 import { SMTPConfig } from '@/types/smtp';
 
 export default function EmailComposer({ onClose, onSend }: EmailComposerProps) {
@@ -39,6 +39,7 @@ export default function EmailComposer({ onClose, onSend }: EmailComposerProps) {
   const [showCc, setShowCc] = useState(false);
   const [subject, setSubject] = useState('');
   const [markdown, setMarkdown] = useState('');
+  const [priority, setPriority] = useState<EmailPriority>('normal');
   const [attachments, setAttachments] = useState<File[]>([]);
 
   // Preview state
@@ -92,6 +93,7 @@ export default function EmailComposer({ onClose, onSend }: EmailComposerProps) {
     setShowCc(false);
     setSubject('');
     setMarkdown('');
+    setPriority('normal');
     setAttachments([]);
     setPreviewFile(null);
   };
@@ -122,14 +124,15 @@ export default function EmailComposer({ onClose, onSend }: EmailComposerProps) {
       return;
     }
 
-    // Start sending process - always use default SMTP for direct send
+    // Start sending process with selected SMTP config
     startSendCountdown(
       toRecipients,
       ccRecipients,
       subject,
       markdown,
       attachments,
-      undefined, // Always use default SMTP for direct send
+      priority,
+      selectedConfig || undefined, // Use selected config or default
       () => {
         resetForm();
         if (onSend) {
@@ -179,6 +182,7 @@ export default function EmailComposer({ onClose, onSend }: EmailComposerProps) {
       subject,
       markdown,
       attachments,
+      priority,
       selectedConfig || undefined, // Use selected config or default
       () => {
         resetForm();
@@ -265,6 +269,8 @@ export default function EmailComposer({ onClose, onSend }: EmailComposerProps) {
           onShowCcChange={setShowCc}
           subject={subject}
           onSubjectChange={setSubject}
+          priority={priority}
+          onPriorityChange={setPriority}
         />
 
         {/* Email Editor and Preview */}

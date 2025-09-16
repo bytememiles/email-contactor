@@ -5,7 +5,8 @@ import { sendEmail } from '@/lib/email';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { to, cc, subject, html, text, attachments, smtpConfig } = body;
+    const { to, cc, subject, html, text, priority, attachments, smtpConfig } =
+      body;
 
     if (!to || !subject || (!html && !text)) {
       return NextResponse.json(
@@ -20,6 +21,7 @@ export async function POST(request: NextRequest) {
       subject,
       html,
       text,
+      priority,
       attachments,
       smtpConfig,
     });

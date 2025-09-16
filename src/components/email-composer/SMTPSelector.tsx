@@ -91,7 +91,7 @@ export const SMTPSelector: React.FC<SMTPSelectorProps> = ({
             <Button
               startIcon={<Send />}
               onClick={handleDirectSend}
-              disabled={disabled}
+              disabled={disabled || isSending}
               sx={{
                 px: 2,
                 height: { xs: 40, sm: 36 },
@@ -107,7 +107,7 @@ export const SMTPSelector: React.FC<SMTPSelectorProps> = ({
           <span>
             <Button
               onClick={handleSelectSMTP}
-              disabled={disabled}
+              disabled={disabled || isSending}
               sx={{
                 minWidth: { xs: 40, sm: 36 },
                 width: { xs: 40, sm: 36 },

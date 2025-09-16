@@ -1,8 +1,11 @@
+export type EmailPriority = 'low' | 'normal' | 'high';
+
 export interface EmailData {
   to: string;
   subject: string;
   html: string;
   text: string;
+  priority?: EmailPriority;
 }
 
 export interface EmailComposerProps {
@@ -43,6 +46,8 @@ export interface RecipientFieldsProps {
   onShowCcChange: (show: boolean) => void;
   subject: string;
   onSubjectChange: (subject: string) => void;
+  priority: EmailPriority;
+  onPriorityChange: (priority: EmailPriority) => void;
 }
 
 export interface EmailEditorProps {
