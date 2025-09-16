@@ -33,7 +33,7 @@ import {
   Typography,
 } from '@mui/material';
 
-import { useSMTPConfigs } from '@/hooks/useSMTPConfigs';
+import { useSMTPConfigsRedux } from '@/hooks/useSMTPConfigsRedux';
 import { SettingsModalProps, SMTPConfig, SMTPConfigForm } from '@/types/smtp';
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({
@@ -42,13 +42,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 }) => {
   const {
     configs,
-    customConfigs,
+    hasConfigs,
     addConfig,
     updateConfig,
     deleteConfig,
     testConfig,
     setAsDefault,
-  } = useSMTPConfigs();
+  } = useSMTPConfigsRedux();
 
   const [showForm, setShowForm] = useState(false);
   const [editingConfig, setEditingConfig] = useState<SMTPConfig | null>(null);
@@ -138,20 +138,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   };
 
   const handleTest = async (config: SMTPConfig) => {
-    // Check if config has valid credentials
-    if (
-      config.isDefault &&
-      (!config.username ||
-        config.username === '[From Environment]' ||
-        config.username === '[Environment Not Available]' ||
-        !config.password ||
-        config.password === '[From Environment]' ||
-        config.password === '[Environment Not Available]')
-    ) {
-      setTestResults((prev) => ({ ...prev, [config.id]: false }));
-      return;
-    }
-
     setTesting(config.id);
     const result = await testConfig(config);
     setTestResults((prev) => ({ ...prev, [config.id]: result }));
@@ -194,6 +180,19 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       </DialogTitle>
 
       <DialogContent dividers>
+        {/* No Configurations Alert */}
+        {!hasConfigs && !showForm && (
+          <Alert severity="warning" sx={{ mb: 3 }}>
+            <Typography variant="body2" sx={{ mb: 1 }}>
+              <strong>No SMTP Configurations Found</strong>
+            </Typography>
+            <Typography variant="body2">
+              You need to configure at least one SMTP server to send emails.
+              Click &quot;Add Configuration&quot; to get started.
+            </Typography>
+          </Alert>
+        )}
+
         <Box sx={{ mb: 3 }}>
           <Box
             sx={{
@@ -211,7 +210,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 onClick={() => setShowForm(true)}
                 size="small"
               >
-                Add New
+                Add Configuration
               </Button>
             )}
           </Box>
@@ -403,15 +402,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         {config.host}:{config.port} (
                         {config.encryption.toUpperCase()}) •{' '}
                         {config.fromAddress}
-                        {config.isDefault &&
-                          (config.username === '[Environment Not Available]' ||
-                            config.username === '[From Environment]') && (
-                            <>
-                              <br />
-                              ⚠️ Uses server environment variables. Testing may
-                              fail if not configured.
-                            </>
-                          )}
                       </>
                     }
                   />
@@ -457,19 +447,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             ))}
           </List>
 
-          <Alert severity="info" sx={{ mt: 2 }}>
-            <Typography variant="body2" sx={{ mb: 1 }}>
-              <strong>Default SMTP:</strong> Uses server environment variables
-              (.env file). Credentials are not exposed to the browser for
-              security.
-            </Typography>
-            {configs.length === 1 && (
+          {hasConfigs && (
+            <Alert severity="info" sx={{ mt: 2 }}>
               <Typography variant="body2">
-                You can add additional SMTP configurations to send emails from
-                different accounts or servers.
+                All SMTP configurations are stored securely in your
+                browser&apos;s local storage. You can add multiple
+                configurations and set any one as the default for quick sending.
               </Typography>
-            )}
-          </Alert>
+            </Alert>
+          )}
         </Box>
       </DialogContent>
 

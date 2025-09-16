@@ -27,7 +27,8 @@ import {
   SettingsModal,
   SMTPSelector,
 } from '@/components/email-composer';
-import { useEmailSender, useSMTPConfigs } from '@/hooks';
+import { useEmailSender } from '@/hooks';
+import { useSMTPConfigsRedux } from '@/hooks/useSMTPConfigsRedux';
 import { EmailComposerProps } from '@/types/email';
 import { SMTPConfig } from '@/types/smtp';
 
@@ -64,8 +65,9 @@ export default function EmailComposer({ onClose, onSend }: EmailComposerProps) {
   const {
     selectedConfig,
     setSelectedConfig,
+    hasConfigs,
     loading: smtpLoading,
-  } = useSMTPConfigs();
+  } = useSMTPConfigsRedux();
 
   // Form handlers
   const handleAddFiles = (newFiles: File[]) => {
@@ -239,6 +241,19 @@ export default function EmailComposer({ onClose, onSend }: EmailComposerProps) {
         </Toolbar>
 
         <Divider />
+
+        {/* No SMTP Configurations Alert */}
+        {!hasConfigs && (
+          <Alert severity="error" sx={{ m: 2, borderRadius: 1 }}>
+            <Typography variant="body2" sx={{ mb: 1 }}>
+              <strong>No SMTP Configuration Found</strong>
+            </Typography>
+            <Typography variant="body2">
+              You need to configure at least one SMTP server to send emails.
+              Click the settings icon above to add your SMTP configuration.
+            </Typography>
+          </Alert>
+        )}
 
         {/* Recipient Fields */}
         <RecipientFields

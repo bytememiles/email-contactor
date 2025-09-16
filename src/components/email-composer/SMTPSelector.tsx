@@ -15,7 +15,7 @@ import {
   Typography,
 } from '@mui/material';
 
-import { useSMTPConfigs } from '@/hooks/useSMTPConfigs';
+import { useSMTPConfigsRedux } from '@/hooks/useSMTPConfigsRedux';
 import { SMTPSelectorProps } from '@/types/smtp';
 
 export const SMTPSelector: React.FC<SMTPSelectorProps> = ({
@@ -27,7 +27,7 @@ export const SMTPSelector: React.FC<SMTPSelectorProps> = ({
   isSending = false,
   countdown = 0,
 }) => {
-  const { configs } = useSMTPConfigs();
+  const { configs } = useSMTPConfigsRedux();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
 
