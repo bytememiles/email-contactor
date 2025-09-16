@@ -1,8 +1,4 @@
-// Email validation function
-export const validateEmail = (email: string) => {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email.trim());
-};
+// validateEmail function moved to csvUtils.ts to avoid export conflicts
 
 // File size formatting
 export const formatFileSize = (bytes: number) => {
