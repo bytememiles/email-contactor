@@ -25,9 +25,12 @@ export const useTemplates = () => {
           > & {
             createdAt: string;
             updatedAt: string;
+            subject?: string; // Optional for migration
           };
           return {
             ...templateData,
+            // Handle migration: add subject if it doesn't exist
+            subject: templateData.subject || '',
             createdAt: new Date(templateData.createdAt),
             updatedAt: new Date(templateData.updatedAt),
           };
@@ -96,6 +99,7 @@ export const useTemplates = () => {
       const newTemplate: EmailTemplate = {
         id: crypto.randomUUID(),
         name: templateData.name,
+        subject: templateData.subject,
         content: templateData.content,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -120,6 +124,7 @@ export const useTemplates = () => {
           return {
             ...template,
             name: templateData.name,
+            subject: templateData.subject,
             content: templateData.content,
             updatedAt: new Date(),
             isValid: validation.isValid,

@@ -1,3 +1,5 @@
+import { EmailTemplate } from './template';
+
 export interface SMTPConfig {
   id: string;
   name: string;
@@ -25,6 +27,7 @@ export interface SMTPConfigForm {
 export interface SettingsModalProps {
   open: boolean;
   onClose: () => void;
+  onTemplateApply?: (template: EmailTemplate) => void;
 }
 
 export interface SMTPSelectorProps {

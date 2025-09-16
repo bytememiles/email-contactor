@@ -53,4 +53,5 @@ export interface RecipientFieldsProps {
 export interface EmailEditorProps {
   markdown: string;
   onMarkdownChange: (markdown: string) => void;
+  onTemplateApply?: (subject: string, content: string) => void;
 }

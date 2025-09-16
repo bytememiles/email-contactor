@@ -14,10 +14,14 @@ import MDEditor from '@uiw/react-md-editor';
 
 import { addEmailStyles, convertMarkdownToEmail } from '@/lib/markdown';
 import { EmailEditorProps } from '@/types/email';
+import { EmailTemplate } from '@/types/template';
+
+import { TemplateSelector } from './TemplateSelector';
 
 export const EmailEditor: React.FC<EmailEditorProps> = ({
   markdown,
   onMarkdownChange,
+  onTemplateApply,
 }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
@@ -95,6 +99,21 @@ export const EmailEditor: React.FC<EmailEditorProps> = ({
 
   const handleCloseUploadStatus = () => {
     setUploadStatus((prev) => ({ ...prev, open: false }));
+  };
+
+  const handleTemplateSelect = (template: EmailTemplate) => {
+    if (onTemplateApply) {
+      onTemplateApply(template.subject || '', template.content || '');
+      // Don't show notification here - let the parent component handle it
+    } else {
+      // Fallback: just set the content if no callback provided
+      onMarkdownChange(template.content || '');
+      setUploadStatus({
+        open: true,
+        message: `Template "${template.name}" content loaded!`,
+        severity: 'success',
+      });
+    }
   };
 
   const handleDownload = () => {
@@ -216,6 +235,12 @@ export const EmailEditor: React.FC<EmailEditorProps> = ({
           </Typography>
 
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            {/* Template Selector */}
+            <TemplateSelector
+              onTemplateSelect={handleTemplateSelect}
+              disabled={false}
+            />
+
             <Tooltip title="Download Current Content as Markdown">
               <span>
                 <IconButton

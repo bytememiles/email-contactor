@@ -4,6 +4,7 @@ export { EmailEditor } from './EmailEditor';
 export { FilePreview } from './FilePreview';
 export { RecipientFields } from './RecipientFields';
 export { SMTPSelector } from './SMTPSelector';
+export { TemplateSelector } from './TemplateSelector';
 
 // Settings Modal components
 export {

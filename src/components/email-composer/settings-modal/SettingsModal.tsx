@@ -26,6 +26,7 @@ import { TemplatesTab } from './TemplatesTab';
 export const SettingsModal: React.FC<SettingsModalProps> = ({
   open,
   onClose,
+  onTemplateApply,
 }) => {
   const [activeTab, setActiveTab] = useState(0);
 
@@ -94,7 +95,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         <Box sx={{ p: 3, minHeight: 400 }}>
           {activeTab === 0 && <SMTPTab />}
           {activeTab === 1 && <BatchOperationsTab />}
-          {activeTab === 2 && <TemplatesTab />}
+          {activeTab === 2 && (
+            <TemplatesTab onTemplateApply={onTemplateApply} />
+          )}
         </Box>
       </DialogContent>
 

@@ -7,14 +7,11 @@ import {
   Edit,
   Error,
   Visibility,
-  Warning,
 } from '@mui/icons-material';
 import {
   Alert,
   Box,
   Button,
-  Card,
-  CardContent,
   Chip,
   CircularProgress,
   Dialog,
@@ -31,6 +28,7 @@ import {
   ListItemText,
   Paper,
   TextField,
+  Tooltip,
   Typography,
 } from '@mui/material';
 
@@ -38,7 +36,13 @@ import { useTemplates } from '@/hooks/useTemplates';
 import { addEmailStyles, convertMarkdownToEmail } from '@/lib/markdown';
 import { EmailTemplate, TemplateForm } from '@/types/template';
 
-export const TemplatesTab: React.FC = () => {
+interface TemplatesTabProps {
+  onTemplateApply?: (template: EmailTemplate) => void;
+}
+
+export const TemplatesTab: React.FC<TemplatesTabProps> = ({
+  onTemplateApply,
+}) => {
   const {
     templates,
     loading,
@@ -59,26 +63,48 @@ export const TemplatesTab: React.FC = () => {
 
   const [formData, setFormData] = useState<TemplateForm>({
     name: '',
+    subject: '',
     content: '',
   });
 
   const [formErrors, setFormErrors] = useState<{
     name?: string;
+    subject?: string;
     content?: string;
   }>({});
 
   const resetForm = () => {
-    setFormData({ name: '', content: '' });
+    setFormData({ name: '', subject: '', content: '' });
     setFormErrors({});
     setEditingTemplate(null);
     setShowForm(false);
   };
 
+  // Helper function to truncate text smartly
+  const truncateText = (text: string, maxLength: number): string => {
+    if (text.length <= maxLength) return text;
+    // Find the last space before the max length to avoid cutting words
+    const truncated = text.substring(0, maxLength);
+    const lastSpace = truncated.lastIndexOf(' ');
+    return lastSpace > maxLength * 0.7
+      ? truncated.substring(0, lastSpace) + '…'
+      : truncated + '…';
+  };
+
+  // Helper function to check if text is truncated
+  const isTextTruncated = (text: string, maxLength: number): boolean => {
+    return text.length > maxLength;
+  };
+
   const validateForm = (): boolean => {
-    const errors: { name?: string; content?: string } = {};
+    const errors: { name?: string; subject?: string; content?: string } = {};
 
     if (!formData.name.trim()) {
       errors.name = 'Template name is required';
+    }
+
+    if (!formData.subject.trim()) {
+      errors.subject = 'Template subject is required';
     }
 
     if (!formData.content.trim()) {
@@ -105,6 +131,7 @@ export const TemplatesTab: React.FC = () => {
   const handleEdit = (template: EmailTemplate) => {
     setFormData({
       name: template.name,
+      subject: template.subject,
       content: template.content,
     });
     setEditingTemplate(template);
@@ -134,9 +161,20 @@ export const TemplatesTab: React.FC = () => {
       const content = e.target?.result as string;
       const fileName = file.name.replace(/\.(md|markdown)$/, '');
 
+      // Try to extract subject from first line if it's a header
+      const lines = content.split('\n');
+      let extractedSubject = '';
+      let actualContent = content;
+
+      if (lines[0] && lines[0].startsWith('# ')) {
+        extractedSubject = lines[0].replace('# ', '').trim();
+        actualContent = lines.slice(1).join('\n').trim();
+      }
+
       setFormData({
         name: fileName,
-        content: content,
+        subject: extractedSubject,
+        content: actualContent,
       });
       setShowForm(true);
       setUploading(false);
@@ -155,10 +193,15 @@ export const TemplatesTab: React.FC = () => {
     }
   };
 
-  const currentValidation = selectedTemplate
+  // Get the current template from the templates array to ensure we have the latest data
+  const currentTemplate = selectedTemplate
+    ? templates.find((t) => t.id === selectedTemplate.id) || selectedTemplate
+    : null;
+
+  const currentValidation = currentTemplate
     ? {
-        isValid: selectedTemplate.isValid,
-        errors: selectedTemplate.validationErrors,
+        isValid: currentTemplate.isValid,
+        errors: currentTemplate.validationErrors,
         warnings: [],
       }
     : null;
@@ -286,12 +329,34 @@ export const TemplatesTab: React.FC = () => {
               <List sx={{ flexGrow: 1, overflow: 'auto', p: 0 }}>
                 {templates.map((template, index) => (
                   <React.Fragment key={template.id}>
-                    <ListItem disablePadding>
+                    <ListItem disablePadding sx={{ minHeight: 72 }}>
                       <ListItemButton
                         selected={selectedTemplate?.id === template.id}
                         onClick={() => setSelectedTemplate(template)}
+                        sx={{
+                          pr: 9, // Reserve space for action buttons (2 buttons * ~32px + gap + padding)
+                          py: 1.5, // Vertical padding for better spacing
+                          minHeight: 72,
+                          alignItems: 'flex-start',
+                          '&:hover': {
+                            backgroundColor: 'action.hover',
+                          },
+                          '&.Mui-selected': {
+                            backgroundColor: 'primary.main',
+                            color: 'primary.contrastText',
+                            '&:hover': {
+                              backgroundColor: 'primary.dark',
+                            },
+                            '& .MuiTypography-root': {
+                              color: 'inherit',
+                            },
+                            '& .MuiListItemIcon-root': {
+                              color: 'inherit',
+                            },
+                          },
+                        }}
                       >
-                        <ListItemIcon>
+                        <ListItemIcon sx={{ mt: 0.5, minWidth: 36 }}>
                           {template.isValid ? (
                             <CheckCircle color="success" fontSize="small" />
                           ) : (
@@ -299,31 +364,129 @@ export const TemplatesTab: React.FC = () => {
                           )}
                         </ListItemIcon>
                         <ListItemText
-                          primary={template.name}
-                          secondary={`Updated ${template.updatedAt.toLocaleDateString()}`}
+                          primary={
+                            <Tooltip
+                              title={
+                                isTextTruncated(template.name, 30)
+                                  ? template.name
+                                  : ''
+                              }
+                              arrow
+                              placement="top"
+                              disableHoverListener={
+                                !isTextTruncated(template.name, 30)
+                              }
+                            >
+                              <Typography variant="body1" noWrap sx={{ pr: 1 }}>
+                                {truncateText(template.name, 30)}
+                              </Typography>
+                            </Tooltip>
+                          }
+                          secondary={
+                            <Box sx={{ pr: 1 }}>
+                              <Tooltip
+                                title={
+                                  template.subject &&
+                                  isTextTruncated(template.subject, 40)
+                                    ? template.subject
+                                    : ''
+                                }
+                                arrow
+                                placement="bottom-start"
+                                disableHoverListener={
+                                  !template.subject ||
+                                  !isTextTruncated(template.subject, 40)
+                                }
+                                sx={{ display: 'block' }}
+                              >
+                                <Typography
+                                  variant="body2"
+                                  color="text.secondary"
+                                  noWrap
+                                  sx={{
+                                    mb: 0.5,
+                                    cursor:
+                                      template.subject &&
+                                      isTextTruncated(template.subject, 40)
+                                        ? 'help'
+                                        : 'default',
+                                    position: 'relative',
+                                    '&:hover':
+                                      template.subject &&
+                                      isTextTruncated(template.subject, 40)
+                                        ? {
+                                            backgroundColor: 'action.hover',
+                                            borderRadius: 0.5,
+                                            px: 0.5,
+                                            mx: -0.5,
+                                          }
+                                        : {},
+                                  }}
+                                >
+                                  {template.subject
+                                    ? truncateText(template.subject, 40)
+                                    : 'No subject'}
+                                </Typography>
+                              </Tooltip>
+                              <Typography
+                                variant="caption"
+                                color="text.secondary"
+                              >
+                                Updated{' '}
+                                {template.updatedAt.toLocaleDateString()}
+                              </Typography>
+                            </Box>
+                          }
+                          sx={{
+                            '& .MuiListItemText-primary': {
+                              marginBottom: '4px',
+                            },
+                            '& .MuiListItemText-secondary': {
+                              lineHeight: 1.3,
+                            },
+                          }}
                         />
-                        <ListItemSecondaryAction>
-                          <IconButton
-                            size="small"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleEdit(template);
-                            }}
-                            title="Edit"
-                          >
-                            <Edit fontSize="small" />
-                          </IconButton>
-                          <IconButton
-                            size="small"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDelete(template);
-                            }}
-                            title="Delete"
-                            color="error"
-                          >
-                            <Delete fontSize="small" />
-                          </IconButton>
+                        <ListItemSecondaryAction
+                          sx={{ top: '50%', transform: 'translateY(-50%)' }}
+                        >
+                          <Box sx={{ display: 'flex', gap: 0.5 }}>
+                            <IconButton
+                              size="small"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleEdit(template);
+                              }}
+                              title="Edit"
+                              sx={{
+                                width: 32,
+                                height: 32,
+                                '&:hover': {
+                                  backgroundColor: 'action.hover',
+                                },
+                              }}
+                            >
+                              <Edit fontSize="small" />
+                            </IconButton>
+                            <IconButton
+                              size="small"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDelete(template);
+                              }}
+                              title="Delete"
+                              color="error"
+                              sx={{
+                                width: 32,
+                                height: 32,
+                                '&:hover': {
+                                  backgroundColor: 'error.main',
+                                  color: 'white',
+                                },
+                              }}
+                            >
+                              <Delete fontSize="small" />
+                            </IconButton>
+                          </Box>
                         </ListItemSecondaryAction>
                       </ListItemButton>
                     </ListItem>
@@ -340,7 +503,7 @@ export const TemplatesTab: React.FC = () => {
           <Paper
             sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}
           >
-            {selectedTemplate ? (
+            {currentTemplate ? (
               <>
                 <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
                   <Box
@@ -351,10 +514,20 @@ export const TemplatesTab: React.FC = () => {
                     }}
                   >
                     <Typography variant="subtitle1">
-                      {selectedTemplate.name}
+                      {currentTemplate.name}
                     </Typography>
-                    <Box sx={{ display: 'flex', gap: 1 }}>
-                      {selectedTemplate.isValid ? (
+                    <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                      {onTemplateApply && currentTemplate.isValid && (
+                        <Button
+                          variant="contained"
+                          size="small"
+                          onClick={() => onTemplateApply(currentTemplate)}
+                          sx={{ mr: 1 }}
+                        >
+                          Apply Template
+                        </Button>
+                      )}
+                      {currentTemplate.isValid ? (
                         <Chip
                           icon={<CheckCircle />}
                           label="Valid"
@@ -374,6 +547,37 @@ export const TemplatesTab: React.FC = () => {
                 </Box>
 
                 <Box sx={{ flexGrow: 1, overflow: 'auto', p: 2 }}>
+                  {/* Subject Preview */}
+                  <Box sx={{ mb: 2 }}>
+                    <Typography
+                      variant="subtitle2"
+                      color="text.secondary"
+                      gutterBottom
+                    >
+                      Subject Line:
+                    </Typography>
+                    <Paper
+                      variant="outlined"
+                      sx={{
+                        p: 2,
+                        bgcolor: 'grey.50',
+                        maxHeight: 120,
+                        overflow: 'auto',
+                      }}
+                    >
+                      <Typography
+                        variant="body1"
+                        sx={{
+                          wordBreak: 'break-word',
+                          whiteSpace: 'pre-wrap',
+                          lineHeight: 1.4,
+                        }}
+                      >
+                        {currentTemplate.subject || 'No subject defined'}
+                      </Typography>
+                    </Paper>
+                  </Box>
+
                   {/* Validation Messages */}
                   {currentValidation && !currentValidation.isValid && (
                     <Alert severity="error" sx={{ mb: 2 }}>
@@ -392,7 +596,16 @@ export const TemplatesTab: React.FC = () => {
                   )}
 
                   {/* Content Preview */}
-                  <>{renderTemplatePreview(selectedTemplate.content)}</>
+                  <Box>
+                    <Typography
+                      variant="subtitle2"
+                      color="text.secondary"
+                      gutterBottom
+                    >
+                      Email Content:
+                    </Typography>
+                    <>{renderTemplatePreview(currentTemplate.content)}</>
+                  </Box>
                 </Box>
               </>
             ) : (
@@ -447,6 +660,21 @@ export const TemplatesTab: React.FC = () => {
               error={!!formErrors.name}
               helperText={formErrors.name}
               fullWidth
+            />
+
+            <TextField
+              label="Email Subject"
+              value={formData.subject}
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, subject: e.target.value }))
+              }
+              error={!!formErrors.subject}
+              helperText={
+                formErrors.subject ||
+                'Subject line for emails using this template. You can use [first_name] and [sender_name] as placeholders'
+              }
+              fullWidth
+              placeholder="Enter email subject..."
             />
 
             <TextField

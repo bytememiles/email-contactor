@@ -31,6 +31,7 @@ import { useEmailSender } from '@/hooks';
 import { useSMTPConfigsRedux } from '@/hooks/useSMTPConfigsRedux';
 import { EmailComposerProps, EmailPriority } from '@/types/email';
 import { SMTPConfig } from '@/types/smtp';
+import { EmailTemplate } from '@/types/template';
 
 export default function EmailComposer({ onClose, onSend }: EmailComposerProps) {
   // Form state
@@ -96,6 +97,33 @@ export default function EmailComposer({ onClose, onSend }: EmailComposerProps) {
     setPriority('normal');
     setAttachments([]);
     setPreviewFile(null);
+  };
+
+  const handleTemplateApply = (template: EmailTemplate) => {
+    setSubject(template.subject);
+    setMarkdown(template.content);
+    setShowSettings(false); // Close settings modal after applying template
+    showNotification(
+      `Template "${template.name}" applied successfully!`,
+      'success'
+    );
+  };
+
+  const handleEmailEditorTemplateApply = (subject: string, content: string) => {
+    // Clear first to ensure React detects the change
+    setSubject('');
+    setMarkdown('');
+
+    // Then set the new values in the next render cycle
+    requestAnimationFrame(() => {
+      setSubject(subject || '');
+      setMarkdown(content || '');
+    });
+
+    showNotification(
+      `Template applied! ${subject ? `Subject: "${subject}"` : 'Template has no subject - you may need to edit older templates to add subjects'}`,
+      subject ? 'success' : 'info'
+    );
   };
 
   const handleSend = () => {
@@ -274,7 +302,11 @@ export default function EmailComposer({ onClose, onSend }: EmailComposerProps) {
         />
 
         {/* Email Editor and Preview */}
-        <EmailEditor markdown={markdown} onMarkdownChange={setMarkdown} />
+        <EmailEditor
+          markdown={markdown}
+          onMarkdownChange={setMarkdown}
+          onTemplateApply={handleEmailEditorTemplateApply}
+        />
 
         {/* Attachments */}
         <AttachmentManager
@@ -378,6 +410,7 @@ export default function EmailComposer({ onClose, onSend }: EmailComposerProps) {
       <SettingsModal
         open={showSettings}
         onClose={() => setShowSettings(false)}
+        onTemplateApply={handleTemplateApply}
       />
     </>
   );
