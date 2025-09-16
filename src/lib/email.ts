@@ -90,12 +90,17 @@ export function createEmailTransporter(
 
 export async function sendEmail(emailData: EmailData): Promise<boolean> {
   try {
+    if (!emailData.smtpConfig) {
+      throw new Error('SMTP configuration is required');
+    }
+
     const transporter = createEmailTransporter(emailData.smtpConfig);
 
-    const fromAddress =
-      emailData.smtpConfig?.fromAddress ||
-      emailData.from ||
-      process.env.MAIL_FROM_ADDRESS;
+    const fromAddress = emailData.smtpConfig.fromAddress || emailData.from;
+
+    if (!fromAddress) {
+      throw new Error('From address is required in SMTP configuration');
+    }
 
     const mailOptions = {
       from: fromAddress,
@@ -110,10 +115,19 @@ export async function sendEmail(emailData: EmailData): Promise<boolean> {
         : undefined,
     };
 
+    console.log('Sending email with SMTP config:', {
+      host: emailData.smtpConfig.host,
+      port: emailData.smtpConfig.port,
+      from: fromAddress,
+      to: emailData.to,
+    });
+
     const result = await transporter.sendMail(mailOptions);
+    console.log('Email sent successfully:', result.messageId);
     return true;
   } catch (error) {
     console.error('Error sending email:', error);
-    return false;
+    // Re-throw the error so the API can return the specific error message
+    throw error;
   }
 }

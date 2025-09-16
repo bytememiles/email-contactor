@@ -12,15 +12,28 @@ const CACHE_DURATION = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
  */
 class TimezoneService {
   private cache: Map<string, TimezoneCacheEntry> = new Map();
+  private cacheLoaded = false;
 
   constructor() {
-    this.loadCache();
+    // Don't load cache during construction to avoid SSR issues
+    // Cache will be loaded lazily when first accessed
   }
 
   /**
-   * Load cache from localStorage
+   * Check if we're in a browser environment
+   */
+  private isBrowser(): boolean {
+    return typeof window !== 'undefined' && typeof localStorage !== 'undefined';
+  }
+
+  /**
+   * Load cache from localStorage (only in browser)
    */
   private loadCache(): void {
+    if (!this.isBrowser()) {
+      return;
+    }
+
     try {
       const stored = localStorage.getItem(CACHE_KEY);
       if (stored) {
@@ -29,20 +42,35 @@ class TimezoneService {
           this.cache.set(key, value as TimezoneCacheEntry);
         });
       }
+      this.cacheLoaded = true;
     } catch (error) {
       console.error('Failed to load timezone cache:', error);
+      this.cacheLoaded = true; // Mark as loaded even if failed to prevent repeated attempts
     }
   }
 
   /**
-   * Save cache to localStorage
+   * Save cache to localStorage (only in browser)
    */
   private saveCache(): void {
+    if (!this.isBrowser()) {
+      return;
+    }
+
     try {
       const cacheObject = Object.fromEntries(this.cache);
       localStorage.setItem(CACHE_KEY, JSON.stringify(cacheObject));
     } catch (error) {
       console.error('Failed to save timezone cache:', error);
+    }
+  }
+
+  /**
+   * Ensure cache is loaded (lazy loading)
+   */
+  private ensureCacheLoaded(): void {
+    if (!this.cacheLoaded) {
+      this.loadCache();
     }
   }
 
@@ -200,6 +228,9 @@ class TimezoneService {
       return { timezone: 'UTC', source: 'fallback' };
     }
 
+    // Ensure cache is loaded before using it
+    this.ensureCacheLoaded();
+
     const normalizedLocation = this.normalizeLocation(location);
 
     // 1. Check cache first
@@ -243,6 +274,8 @@ class TimezoneService {
    * Clear expired cache entries
    */
   clearExpiredCache(): void {
+    this.ensureCacheLoaded();
+
     const now = Date.now();
     for (const [key, entry] of this.cache.entries()) {
       if (now - entry.timestamp >= CACHE_DURATION) {
@@ -256,6 +289,8 @@ class TimezoneService {
    * Get cache statistics
    */
   getCacheStats(): { totalEntries: number; validEntries: number } {
+    this.ensureCacheLoaded();
+
     const now = Date.now();
     let validEntries = 0;
 

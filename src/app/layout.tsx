@@ -1,19 +1,11 @@
 import type { Metadata } from 'next';
-import { Geist, Geist_Mono } from 'next/font/google';
 
 import { ReduxProvider } from '@/components/ReduxProvider';
 
 import './globals.css';
 
-const geistSans = Geist({
-  variable: '--font-geist-sans',
-  subsets: ['latin'],
-});
-
-const geistMono = Geist_Mono({
-  variable: '--font-geist-mono',
-  subsets: ['latin'],
-});
+// Use system fonts to avoid Google Fonts loading issues with Turbopack
+// This provides a more reliable fallback while maintaining good typography
 
 export const metadata: Metadata = {
   title: 'Email Composer - Professional Email Management Tool',
@@ -40,9 +32,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
+      <body className="antialiased">
         <ReduxProvider>{children}</ReduxProvider>
       </body>
     </html>

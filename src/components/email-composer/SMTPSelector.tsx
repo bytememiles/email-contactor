@@ -61,7 +61,7 @@ export const SMTPSelector: React.FC<SMTPSelectorProps> = ({
 
   const getTooltipText = () => {
     if (isSending && countdown > 0) {
-      return `Click to cancel sending (${countdown}s remaining)`;
+      return `Cancel sending (${countdown}s remaining)`;
     }
     if (disabled) {
       return 'Please fill in recipient, subject, and message';
@@ -91,7 +91,8 @@ export const SMTPSelector: React.FC<SMTPSelectorProps> = ({
             <Button
               startIcon={<Send />}
               onClick={handleDirectSend}
-              disabled={disabled || isSending}
+              disabled={disabled && !isSending}
+              color={isSending && countdown > 0 ? 'warning' : 'primary'}
               sx={{
                 px: 2,
                 height: { xs: 40, sm: 36 },
