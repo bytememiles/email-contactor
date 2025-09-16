@@ -29,25 +29,22 @@ A modern email composer application built with Next.js, TypeScript, and Material
    pnpm install
    ```
 
-2. **Set up environment variables:**
+2. **Configure SMTP Settings:**
 
-   Copy the example environment file and update it with your Gmail credentials:
+   The application uses Redux for state management and stores SMTP configurations in browser local storage (encrypted). No environment variables are needed.
 
-   ```bash
-   cp env.example .env.local
-   ```
+   When you first run the application:
+   - You'll see an alert indicating no SMTP configuration is found
+   - Click the settings icon (⚙️) in the email composer toolbar
+   - Add your SMTP configuration through the settings modal
 
-   Update `.env.local` with your Gmail settings:
-
-   ```env
-   MAIL_MAILER=smtp
-   MAIL_HOST=smtp.gmail.com
-   MAIL_PORT=587
-   MAIL_USERNAME=your-email@gmail.com
-   MAIL_PASSWORD=your-app-password
-   MAIL_ENCRYPTION=tls
-   MAIL_FROM_ADDRESS=your-email@gmail.com
-   ```
+   **For Gmail users:**
+   - Host: `smtp.gmail.com`
+   - Port: `587`
+   - Encryption: `TLS`
+   - Username: Your Gmail address
+   - Password: Gmail App Password (see next step)
+   - From Address: Your Gmail address
 
 3. **Set up Gmail App Password:**
 
@@ -55,7 +52,7 @@ A modern email composer application built with Next.js, TypeScript, and Material
    - Go to [Google Account settings](https://myaccount.google.com/)
    - Navigate to Security → 2-Step Verification → App passwords
    - Generate a new app password for "Mail"
-   - Use this password in your `.env.local` file
+   - Use this password in the SMTP configuration form
 
 4. **Run the development server:**
 
@@ -135,6 +132,8 @@ src/
 
 - **Next.js 15** - React framework with App Router
 - **TypeScript** - Type-safe JavaScript
+- **Redux Toolkit** - State management with RTK
+- **React Redux** - Redux bindings for React
 - **Material-UI** - React component library
 - **Nodemailer** - Email sending library
 - **@uiw/react-md-editor** - Markdown editor component
@@ -143,28 +142,36 @@ src/
 
 ## Security Notes
 
-- Never commit your `.env.local` file to version control
+- SMTP configurations are stored encrypted in browser local storage
 - Always use Gmail App Passwords instead of your main password
 - Enable 2-Step Verification on your Gmail account
 - Consider using environment-specific email accounts for development
+- SMTP credentials never leave the browser and are not sent to any server
 
 ## Troubleshooting
 
 ### Common Issues
 
-1. **"Authentication failed" error:**
+1. **"No SMTP Configuration Found" alert:**
+   - Click the settings icon (⚙️) to open SMTP settings
+   - Add at least one SMTP configuration
+   - The first configuration automatically becomes the default
+
+2. **"Authentication failed" error:**
    - Ensure you're using an App Password, not your regular Gmail password
    - Verify 2-Step Verification is enabled on your Google account
-   - Double-check your username and password in `.env.local`
+   - Double-check your username and password in the SMTP settings
 
-2. **"SMTP connection failed":**
+3. **"SMTP connection failed":**
    - Check your internet connection
    - Verify the SMTP settings are correct
    - Ensure your firewall isn't blocking port 587
+   - Test the configuration using the test button in settings
 
-3. **Emails not sending:**
+4. **Emails not sending:**
    - Check the browser console for errors
-   - Verify all environment variables are set correctly
+   - Verify all SMTP settings are configured correctly
+   - Ensure you have selected a default SMTP configuration
    - Test with a simple email first
 
 ## Contributing
