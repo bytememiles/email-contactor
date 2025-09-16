@@ -10,12 +10,10 @@ import {
 } from '@mui/icons-material';
 import {
   Box,
-  Button,
   Card,
   CardActions,
   CardContent,
   Chip,
-  Grid,
   IconButton,
   InputAdornment,
   TextField,
@@ -116,107 +114,113 @@ export const StoredListsView: React.FC<StoredListsViewProps> = ({
           </Typography>
         </Box>
       ) : (
-        <Grid container spacing={3}>
+        <Box
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: {
+              xs: '1fr',
+              sm: 'repeat(2, 1fr)',
+              md: 'repeat(3, 1fr)',
+            },
+            gap: 3,
+          }}
+        >
           {filteredLists.map((list) => (
-            <Grid item xs={12} sm={6} md={4} key={list.id}>
-              <Card
-                sx={{
-                  height: '100%',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  '&:hover': {
-                    boxShadow: 4,
-                  },
-                }}
-              >
-                <CardContent sx={{ flex: 1 }}>
-                  <Typography variant="h6" gutterBottom noWrap>
-                    {list.name}
+            <Card
+              key={list.id}
+              sx={{
+                height: '100%',
+                display: 'flex',
+                flexDirection: 'column',
+                '&:hover': {
+                  boxShadow: 4,
+                },
+              }}
+            >
+              <CardContent sx={{ flex: 1 }}>
+                <Typography variant="h6" gutterBottom noWrap>
+                  {list.name}
+                </Typography>
+
+                {list.description && (
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ mb: 2, minHeight: 40 }}
+                  >
+                    {list.description}
                   </Typography>
+                )}
 
-                  {list.description && (
-                    <Typography
-                      variant="body2"
-                      color="text.secondary"
-                      sx={{ mb: 2, minHeight: 40 }}
-                    >
-                      {list.description}
-                    </Typography>
-                  )}
-
-                  <Box sx={{ mb: 2 }}>
-                    <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                      <Chip
-                        size="small"
-                        label={`${list.totalReceivers} total`}
-                        variant="outlined"
-                      />
-                      <Chip
-                        size="small"
-                        label={`${list.validReceivers} valid`}
-                        color="success"
-                        variant="outlined"
-                      />
-                    </Box>
-                  </Box>
-
-                  <Typography variant="caption" color="text.secondary">
-                    Created: {formatDate(list.createdAt)}
-                    {list.sourceFileName && (
-                      <>
-                        <br />
-                        Source: {list.sourceFileName}
-                      </>
-                    )}
-                  </Typography>
-                </CardContent>
-
-                <CardActions sx={{ p: 2, pt: 0 }}>
-                  <Tooltip title="View receivers">
-                    <IconButton
+                <Box sx={{ mb: 2 }}>
+                  <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                    <Chip
                       size="small"
-                      onClick={() => onViewList(list.id)}
-                      color="primary"
-                    >
-                      <Visibility />
-                    </IconButton>
-                  </Tooltip>
-
-                  <Tooltip title="Edit list">
-                    <IconButton
+                      label={`${list.totalReceivers} total`}
+                      variant="outlined"
+                    />
+                    <Chip
                       size="small"
-                      onClick={() => onEditList(list.id)}
-                    >
-                      <Edit />
-                    </IconButton>
-                  </Tooltip>
-
-                  <Tooltip title="Export CSV">
-                    <IconButton
-                      size="small"
-                      onClick={() => onExportList(list.id)}
+                      label={`${list.validReceivers} valid`}
                       color="success"
-                    >
-                      <Download />
-                    </IconButton>
-                  </Tooltip>
+                      variant="outlined"
+                    />
+                  </Box>
+                </Box>
 
-                  <Box sx={{ flex: 1 }} />
+                <Typography variant="caption" color="text.secondary">
+                  Created: {formatDate(list.createdAt)}
+                  {list.sourceFileName && (
+                    <>
+                      <br />
+                      Source: {list.sourceFileName}
+                    </>
+                  )}
+                </Typography>
+              </CardContent>
 
-                  <Tooltip title="Delete list">
-                    <IconButton
-                      size="small"
-                      onClick={() => onDeleteList(list.id)}
-                      color="error"
-                    >
-                      <Delete />
-                    </IconButton>
-                  </Tooltip>
-                </CardActions>
-              </Card>
-            </Grid>
+              <CardActions sx={{ p: 2, pt: 0 }}>
+                <Tooltip title="View receivers">
+                  <IconButton
+                    size="small"
+                    onClick={() => onViewList(list.id)}
+                    color="primary"
+                  >
+                    <Visibility />
+                  </IconButton>
+                </Tooltip>
+
+                <Tooltip title="Edit list">
+                  <IconButton size="small" onClick={() => onEditList(list.id)}>
+                    <Edit />
+                  </IconButton>
+                </Tooltip>
+
+                <Tooltip title="Export CSV">
+                  <IconButton
+                    size="small"
+                    onClick={() => onExportList(list.id)}
+                    color="success"
+                  >
+                    <Download />
+                  </IconButton>
+                </Tooltip>
+
+                <Box sx={{ flex: 1 }} />
+
+                <Tooltip title="Delete list">
+                  <IconButton
+                    size="small"
+                    onClick={() => onDeleteList(list.id)}
+                    color="error"
+                  >
+                    <Delete />
+                  </IconButton>
+                </Tooltip>
+              </CardActions>
+            </Card>
           ))}
-        </Grid>
+        </Box>
       )}
     </Box>
   );
