@@ -1,9 +1,10 @@
 import React from 'react';
-import { Box, Typography, IconButton, Card, CardContent } from '@mui/material';
 import { Close, GetApp } from '@mui/icons-material';
-import { formatFileSize, getFileIcon, isImageFile } from '@/utils';
+import { Box, Card, CardContent, IconButton, Typography } from '@mui/material';
+
 import { useThumbnails } from '@/hooks/useThumbnails';
 import { AttachmentManagerProps } from '@/types/email';
+import { formatFileSize, getFileIcon, isImageFile } from '@/utils';
 
 export const AttachmentManager: React.FC<AttachmentManagerProps> = ({
   attachments,

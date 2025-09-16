@@ -1,6 +1,8 @@
 import { useRef, useState } from 'react';
-import { convertMarkdownToEmail, addEmailStyles } from '@/lib/markdown';
-import { NotificationState, AttachmentData } from '@/types/email';
+
+import { addEmailStyles, convertMarkdownToEmail } from '@/lib/markdown';
+import { AttachmentData, NotificationState } from '@/types/email';
+import { SMTPConfig } from '@/types/smtp';
 
 export const useEmailSender = () => {
   const [isSending, setIsSending] = useState(false);
@@ -51,7 +53,8 @@ export const useEmailSender = () => {
     ccRecipients: string[],
     subject: string,
     markdown: string,
-    attachments: File[]
+    attachments: File[],
+    smtpConfig?: SMTPConfig
   ) => {
     try {
       const { html, text } = convertMarkdownToEmail(markdown);
@@ -73,6 +76,7 @@ export const useEmailSender = () => {
           text,
           attachments:
             processedAttachments.length > 0 ? processedAttachments : undefined,
+          smtpConfig,
         }),
       });
 
@@ -102,6 +106,7 @@ export const useEmailSender = () => {
     subject: string,
     markdown: string,
     attachments: File[],
+    smtpConfig?: SMTPConfig,
     onSuccess?: () => void
   ) => {
     setIsSending(true);
@@ -130,7 +135,8 @@ export const useEmailSender = () => {
         ccRecipients,
         subject,
         markdown,
-        attachments
+        attachments,
+        smtpConfig
       );
       if (result.success && onSuccess) {
         onSuccess();

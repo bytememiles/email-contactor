@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Close, Send } from '@mui/icons-material';
+import { Close, Send, Settings } from '@mui/icons-material';
 import {
   Alert,
   Box,
@@ -18,15 +18,18 @@ import {
   Typography,
 } from '@mui/material';
 
-import { EmailComposerProps } from '@/types/email';
-import { useEmailSender } from '@/hooks';
 import {
-  RecipientFields,
-  EmailEditor,
-  AttachmentManager,
   AttachButton,
+  AttachmentManager,
+  EmailEditor,
   FilePreview,
+  RecipientFields,
+  SettingsModal,
+  SMTPSelector,
 } from '@/components/email-composer';
+import { useEmailSender, useSMTPConfigs } from '@/hooks';
+import { EmailComposerProps } from '@/types/email';
+import { SMTPConfig } from '@/types/smtp';
 
 export default function EmailComposer({ onClose, onSend }: EmailComposerProps) {
   // Form state
@@ -41,6 +44,11 @@ export default function EmailComposer({ onClose, onSend }: EmailComposerProps) {
   const [previewFile, setPreviewFile] = useState<File | null>(null);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
 
+  // Settings state
+  const [showSettings, setShowSettings] = useState(false);
+  const [selectedSMTPConfig, setSelectedSMTPConfig] =
+    useState<SMTPConfig | null>(null);
+
   // Email sending hook
   const {
     isSending,
@@ -51,6 +59,13 @@ export default function EmailComposer({ onClose, onSend }: EmailComposerProps) {
     cancelSend,
     showNotification,
   } = useEmailSender();
+
+  // SMTP configurations hook
+  const {
+    selectedConfig,
+    setSelectedConfig,
+    loading: smtpLoading,
+  } = useSMTPConfigs();
 
   // Form handlers
   const handleAddFiles = (newFiles: File[]) => {
@@ -99,19 +114,20 @@ export default function EmailComposer({ onClose, onSend }: EmailComposerProps) {
       return;
     }
 
-    // Check if already sending
+    // Check if already sending - cancel immediately
     if (isSending) {
-      setShowCancelDialog(true);
+      handleCancelSend();
       return;
     }
 
-    // Start sending process
+    // Start sending process - always use default SMTP for direct send
     startSendCountdown(
       toRecipients,
       ccRecipients,
       subject,
       markdown,
       attachments,
+      undefined, // Always use default SMTP for direct send
       () => {
         resetForm();
         if (onSend) {
@@ -129,6 +145,51 @@ export default function EmailComposer({ onClose, onSend }: EmailComposerProps) {
   const handleCancelSend = () => {
     cancelSend();
     setShowCancelDialog(false);
+  };
+
+  // Handle sending with a specific SMTP configuration
+  const handleSendWithConfig = () => {
+    if (!toRecipients.length) {
+      showNotification('Please enter at least one recipient', 'error');
+      return;
+    }
+
+    if (!subject.trim()) {
+      showNotification('Please enter a subject', 'error');
+      return;
+    }
+
+    if (!markdown.trim()) {
+      showNotification('Please enter a message', 'error');
+      return;
+    }
+
+    // Check if already sending
+    if (isSending) {
+      handleCancelSend();
+      return;
+    }
+
+    // Start sending process with selected SMTP config
+    startSendCountdown(
+      toRecipients,
+      ccRecipients,
+      subject,
+      markdown,
+      attachments,
+      selectedConfig || undefined, // Use selected config or default
+      () => {
+        resetForm();
+        if (onSend) {
+          onSend({
+            to: toRecipients.join(','),
+            subject,
+            html: '', // Will be filled by the hook
+            text: '', // Will be filled by the hook
+          });
+        }
+      }
+    );
   };
 
   return (
@@ -156,15 +217,25 @@ export default function EmailComposer({ onClose, onSend }: EmailComposerProps) {
           <Typography variant="h6" sx={{ flexGrow: 1, fontSize: '16px' }}>
             Compose Email
           </Typography>
-          {onClose && (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <IconButton
               size="small"
               sx={{ color: 'inherit' }}
-              onClick={onClose}
+              onClick={() => setShowSettings(true)}
+              title="SMTP Settings"
             >
-              <Close fontSize="small" />
+              <Settings fontSize="small" />
             </IconButton>
-          )}
+            {onClose && (
+              <IconButton
+                size="small"
+                sx={{ color: 'inherit' }}
+                onClick={onClose}
+              >
+                <Close fontSize="small" />
+              </IconButton>
+            )}
+          </Box>
         </Toolbar>
 
         <Divider />
@@ -203,18 +274,16 @@ export default function EmailComposer({ onClose, onSend }: EmailComposerProps) {
           >
             <AttachButton onAddFiles={handleAddFiles} />
 
-            <Button
-              variant="contained"
-              startIcon={<Send />}
-              onClick={handleSend}
-              disabled={toRecipients.length === 0 || !subject || !markdown}
-              sx={{
-                fontSize: { xs: '14px', sm: '16px' },
-                minHeight: { xs: 40, sm: 36 },
-                position: 'relative',
-              }}
-            >
-              Send
+            <Box sx={{ position: 'relative' }}>
+              <SMTPSelector
+                selectedConfig={selectedConfig}
+                onConfigSelect={setSelectedConfig}
+                onSend={handleSend}
+                onSendWithConfig={handleSendWithConfig}
+                disabled={toRecipients.length === 0 || !subject || !markdown}
+                isSending={isSending}
+                countdown={countdown}
+              />
               {isSending && countdown > 0 && (
                 <Box
                   sx={{
@@ -231,12 +300,13 @@ export default function EmailComposer({ onClose, onSend }: EmailComposerProps) {
                     justifyContent: 'center',
                     fontSize: '12px',
                     fontWeight: 'bold',
+                    zIndex: 1,
                   }}
                 >
                   {countdown}
                 </Box>
               )}
-            </Button>
+            </Box>
           </Box>
         </Box>
       </Paper>
@@ -281,6 +351,12 @@ export default function EmailComposer({ onClose, onSend }: EmailComposerProps) {
         file={previewFile}
         isOpen={!!previewFile}
         onClose={handleClosePreview}
+      />
+
+      {/* Settings Modal */}
+      <SettingsModal
+        open={showSettings}
+        onClose={() => setShowSettings(false)}
       />
     </>
   );

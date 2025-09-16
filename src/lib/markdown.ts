@@ -1,5 +1,5 @@
-import { marked } from 'marked';
 import { htmlToText } from 'html-to-text';
+import { marked } from 'marked';
 
 // Configure marked for email-friendly HTML
 const renderer = new marked.Renderer();

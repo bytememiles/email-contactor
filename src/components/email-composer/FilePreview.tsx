@@ -9,20 +9,21 @@ import {
   Typography,
 } from '@mui/material';
 import { marked } from 'marked';
+
+import { FilePreviewProps } from '@/types/email';
 import {
+  formatCsvData,
   formatFileSize,
   getFileIcon,
-  isImageFile,
-  isPdfFile,
-  isExcelFile,
-  isTextFile,
-  isMarkdownFile,
   isCsvFile,
   isDocFile,
+  isExcelFile,
+  isImageFile,
+  isMarkdownFile,
+  isPdfFile,
+  isTextFile,
   readFileAsText,
-  formatCsvData,
 } from '@/utils';
-import { FilePreviewProps } from '@/types/email';
 
 export const FilePreview: React.FC<FilePreviewProps> = ({
   file,

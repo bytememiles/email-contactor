@@ -1,7 +1,8 @@
 import React from 'react';
 import { Autocomplete, Box, Chip, TextField, Typography } from '@mui/material';
-import { validateEmail } from '@/utils';
+
 import { RecipientFieldsProps } from '@/types/email';
+import { validateEmail } from '@/utils';
 
 export const RecipientFields: React.FC<RecipientFieldsProps> = ({
   toRecipients,

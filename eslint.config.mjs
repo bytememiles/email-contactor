@@ -1,6 +1,6 @@
+import { FlatCompat } from '@eslint/eslintrc';
 import { dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { FlatCompat } from '@eslint/eslintrc';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -11,6 +11,36 @@ const compat = new FlatCompat({
 
 const eslintConfig = [
   ...compat.extends('next/core-web-vitals', 'next/typescript'),
+  {
+    plugins: {
+      'simple-import-sort': (await import('eslint-plugin-simple-import-sort'))
+        .default,
+    },
+    rules: {
+      'simple-import-sort/imports': [
+        'error',
+        {
+          groups: [
+            // Side effect imports.
+            ['^\\u0000'],
+            // Node.js builtins prefixed with `node:`.
+            ['^node:'],
+            // Packages. `react` related packages come first.
+            ['^react', '^next', '^@?\\w'],
+            // Internal packages.
+            ['^(@|components|hooks|lib|types|utils)(/.*|$)'],
+            // Parent imports. Put `..` last.
+            ['^\\.\\.(?!/?$)', '^\\.\\./?$'],
+            // Other relative imports. Put same-folder imports and `.` last.
+            ['^\\./(?=.*/)(?!/?$)', '^\\.(?!/?$)', '^\\./?$'],
+            // Style imports.
+            ['^.+\\.s?css$'],
+          ],
+        },
+      ],
+      'simple-import-sort/exports': 'error',
+    },
+  },
   {
     ignores: [
       'node_modules/**',

@@ -1,5 +1,7 @@
 import nodemailer from 'nodemailer';
 
+import { SMTPConfig } from '@/types/smtp';
+
 export interface EmailConfig {
   host: string;
   port: number;
@@ -22,9 +24,30 @@ export interface EmailData {
     content: string;
     encoding: string;
   }>;
+  smtpConfig?: SMTPConfig;
 }
 
-export function createEmailTransporter(): nodemailer.Transporter {
+export function createEmailTransporter(
+  smtpConfig?: SMTPConfig
+): nodemailer.Transporter {
+  if (smtpConfig) {
+    // Use custom SMTP configuration
+    const config = {
+      host: smtpConfig.host,
+      port: smtpConfig.port,
+      secure: smtpConfig.encryption === 'ssl',
+      auth: {
+        user: smtpConfig.username,
+        pass: smtpConfig.password,
+      },
+      tls: {
+        rejectUnauthorized: false,
+      },
+    };
+    return nodemailer.createTransport(config);
+  }
+
+  // Use default environment configuration
   const config: EmailConfig = {
     host: process.env.MAIL_HOST || 'smtp.gmail.com',
     port: parseInt(process.env.MAIL_PORT || '587'),
@@ -40,10 +63,15 @@ export function createEmailTransporter(): nodemailer.Transporter {
 
 export async function sendEmail(emailData: EmailData): Promise<boolean> {
   try {
-    const transporter = createEmailTransporter();
+    const transporter = createEmailTransporter(emailData.smtpConfig);
+
+    const fromAddress =
+      emailData.smtpConfig?.fromAddress ||
+      emailData.from ||
+      process.env.MAIL_FROM_ADDRESS;
 
     const mailOptions = {
-      from: emailData.from || process.env.MAIL_FROM_ADDRESS,
+      from: fromAddress,
       to: emailData.to,
       cc: emailData.cc,
       subject: emailData.subject,

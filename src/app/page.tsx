@@ -1,8 +1,9 @@
 'use client';
 
-import { ThemeProvider, createTheme } from '@mui/material/styles';
-import CssBaseline from '@mui/material/CssBaseline';
 import { Box } from '@mui/material';
+import CssBaseline from '@mui/material/CssBaseline';
+import { createTheme, ThemeProvider } from '@mui/material/styles';
+
 import EmailComposer from '@/components/EmailComposer';
 
 const theme = createTheme({

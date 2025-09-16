@@ -1,5 +1,4 @@
-import { addEmailStyles, convertMarkdownToEmail } from '@/lib/markdown';
-import { EmailEditorProps } from '@/types/email';
+import React, { useRef, useState } from 'react';
 import { Download, UploadFile } from '@mui/icons-material';
 import {
   Alert,
@@ -12,7 +11,9 @@ import {
   useTheme,
 } from '@mui/material';
 import MDEditor from '@uiw/react-md-editor';
-import React, { useRef, useState } from 'react';
+
+import { addEmailStyles, convertMarkdownToEmail } from '@/lib/markdown';
+import { EmailEditorProps } from '@/types/email';
 
 export const EmailEditor: React.FC<EmailEditorProps> = ({
   markdown,
@@ -216,23 +217,25 @@ export const EmailEditor: React.FC<EmailEditorProps> = ({
 
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
             <Tooltip title="Download Current Content as Markdown">
-              <IconButton
-                size="small"
-                onClick={handleDownload}
-                disabled={!markdown.trim()}
-                sx={{
-                  color: markdown.trim() ? 'text.secondary' : 'text.disabled',
-                  '&:hover': {
-                    color: 'primary.main',
-                    backgroundColor: 'action.hover',
-                  },
-                  '&:disabled': {
-                    color: 'text.disabled',
-                  },
-                }}
-              >
-                <Download fontSize="small" />
-              </IconButton>
+              <span>
+                <IconButton
+                  size="small"
+                  onClick={handleDownload}
+                  disabled={!markdown.trim()}
+                  sx={{
+                    color: markdown.trim() ? 'text.secondary' : 'text.disabled',
+                    '&:hover': {
+                      color: 'primary.main',
+                      backgroundColor: 'action.hover',
+                    },
+                    '&:disabled': {
+                      color: 'text.disabled',
+                    },
+                  }}
+                >
+                  <Download fontSize="small" />
+                </IconButton>
+              </span>
             </Tooltip>
 
             <Tooltip title="Upload Markdown File (.md, .markdown, .txt)">
