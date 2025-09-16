@@ -1,16 +1,33 @@
-# Email Composer
+# Email Composer 📧
 
-A modern email composer application built with Next.js, TypeScript, and Material-UI, featuring Gmail-style interface and markdown support.
+A comprehensive email composition and management platform built with Next.js, TypeScript, and Material-UI. Features professional-grade tools for email marketing, batch operations, and template management.
 
-## Features
+## ✨ Features
 
-- 📝 **Markdown Editor** - Write emails using markdown with live preview
-- 📧 **SMTP Integration** - Send emails through Gmail SMTP service
+### Core Email Functionality
+
+- 📝 **Rich Markdown Editor** - Write emails using markdown with live preview
+- 📧 **Multi-SMTP Support** - Configure and manage multiple SMTP providers
 - ⏱️ **Send Delay & Cancellation** - 3-second delay with option to cancel email sending
+- 📎 **File Attachments** - Support for file attachments with preview
 - 🎨 **Gmail-like Interface** - Familiar interface inspired by Gmail's composer
+
+### Advanced Features
+
+- 📊 **Batch Operations** - Upload CSV files and manage bulk email campaigns
+- 🏷️ **Tag Management** - Organize recipients with custom tags and colors
+- 📝 **Template System** - Create, save, and reuse email templates
+- 🌍 **Timezone Detection** - Automatic timezone detection from location data
+- 💾 **Persistent Storage** - Save and manage receiver lists locally
+- 🔍 **Smart Validation** - Email validation and data normalization
+
+### Technical Excellence
+
 - 🔧 **TypeScript** - Full type safety throughout the application
 - 🎯 **Material-UI** - Modern and responsive UI components
+- 🔄 **Redux State Management** - Centralized state with Redux Toolkit
 - 🛠️ **Dev Tools** - ESLint, Prettier, and Husky for code quality
+- 🔒 **Secure Storage** - Encrypted SMTP configurations
 
 ## Getting Started
 
