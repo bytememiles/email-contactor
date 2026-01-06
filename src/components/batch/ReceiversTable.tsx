@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { CheckCircle, Delete, Error, ExpandMore } from '@mui/icons-material';
 import {
   Box,
@@ -33,6 +33,7 @@ interface ReceiversTableProps {
   onDeleteReceiver: (id: string) => void;
   onKeepSelectedOnly?: (selectedIds: string[]) => void;
   onRemoveSelected?: (selectedIds: string[]) => void;
+  onSelectionChange?: (selectedIds: string[]) => void;
 }
 
 export const ReceiversTable: React.FC<ReceiversTableProps> = ({
@@ -40,6 +41,7 @@ export const ReceiversTable: React.FC<ReceiversTableProps> = ({
   onDeleteReceiver,
   onKeepSelectedOnly,
   onRemoveSelected,
+  onSelectionChange,
 }) => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
@@ -121,6 +123,11 @@ export const ReceiversTable: React.FC<ReceiversTableProps> = ({
       setSelectedReceivers([]);
     }
   };
+
+  // Notify parent when selection changes
+  useEffect(() => {
+    onSelectionChange?.(selectedReceivers);
+  }, [selectedReceivers, onSelectionChange]);
 
   const handleTimezoneFilterClick = (event: React.MouseEvent<HTMLElement>) => {
     setTimezoneFilterAnchorEl(event.currentTarget);
@@ -425,7 +432,7 @@ export const ReceiversTable: React.FC<ReceiversTableProps> = ({
             </TableRow>
           </TableHead>
           <TableBody>
-            {currentPageReceivers.map((receiver) => (
+            {currentPageReceivers.map((receiver, index) => (
               <TableRow key={receiver.id} hover>
                 <TableCell padding="checkbox">
                   <Checkbox
@@ -434,7 +441,7 @@ export const ReceiversTable: React.FC<ReceiversTableProps> = ({
                   />
                 </TableCell>
                 <TableCell sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
-                  {receiver.rowNumber}
+                  {page * rowsPerPage + index + 1}
                 </TableCell>
                 <TableCell sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
                   <Tooltip

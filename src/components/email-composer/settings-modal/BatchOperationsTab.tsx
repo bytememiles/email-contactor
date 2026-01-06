@@ -98,6 +98,7 @@ export const BatchOperationsTab: React.FC = () => {
   const [saveMenuAnchor, setSaveMenuAnchor] = useState<null | HTMLElement>(
     null
   );
+  const [selectedReceiverIds, setSelectedReceiverIds] = useState<string[]>([]);
   const [saveMode, setSaveMode] = useState<'save' | 'saveAsCopy'>('save');
 
   // Set default tab based on stored lists once they're loaded
@@ -325,9 +326,19 @@ export const BatchOperationsTab: React.FC = () => {
       return;
     }
 
-    const validReceivers = receivers.filter((r) => r.isValid);
+    // Use selected receivers if any are selected, otherwise use all receivers
+    const receiversToSend =
+      selectedReceiverIds.length > 0
+        ? receivers.filter((r) => selectedReceiverIds.includes(r.id))
+        : receivers;
+
+    const validReceivers = receiversToSend.filter((r) => r.isValid);
     if (validReceivers.length === 0) {
-      showError('No valid receivers to send to');
+      showError(
+        selectedReceiverIds.length > 0
+          ? 'No valid receivers selected to send to'
+          : 'No valid receivers to send to'
+      );
       return;
     }
 
@@ -463,6 +474,7 @@ export const BatchOperationsTab: React.FC = () => {
           onDeleteReceiver={deleteReceiver}
           onKeepSelectedOnly={handleKeepSelectedOnly}
           onRemoveSelected={handleRemoveSelected}
+          onSelectionChange={setSelectedReceiverIds}
         />
       ),
     },
@@ -620,8 +632,17 @@ export const BatchOperationsTab: React.FC = () => {
                             fullWidth={false}
                             disabled={isSending}
                             sx={{ width: { xs: '100%', sm: 'auto' } }}
+                            title={
+                              selectedReceiverIds.length > 0
+                                ? `Send to ${selectedReceiverIds.length} selected receiver(s)`
+                                : 'Send to all receivers'
+                            }
                           >
-                            {isSending ? 'Sending...' : 'Send Now'}
+                            {isSending
+                              ? 'Sending...'
+                              : selectedReceiverIds.length > 0
+                                ? `Send Selected (${selectedReceiverIds.length})`
+                                : 'Send Now'}
                           </Button>
                           {savedListId && (
                             <Button
@@ -812,7 +833,11 @@ export const BatchOperationsTab: React.FC = () => {
           }
         }}
         onConfirm={handleBulkSend}
-        receivers={receivers}
+        receivers={
+          selectedReceiverIds.length > 0
+            ? receivers.filter((r) => selectedReceiverIds.includes(r.id))
+            : receivers
+        }
         isSending={isSending}
         progress={progress}
       />

@@ -134,6 +134,16 @@ export const BulkSendDialog: React.FC<BulkSendDialogProps> = ({
                 You are about to send emails to{' '}
                 <strong>{validReceivers.length}</strong> valid receiver(s)
                 immediately. This action cannot be undone.
+                {receivers.length !== validReceivers.length && (
+                  <Typography
+                    variant="caption"
+                    component="div"
+                    sx={{ mt: 0.5 }}
+                  >
+                    Note: {receivers.length - validReceivers.length} invalid
+                    receiver(s) will be skipped.
+                  </Typography>
+                )}
               </Typography>
             </Alert>
 
