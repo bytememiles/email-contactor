@@ -1,12 +1,5 @@
 import React, { useState } from 'react';
-import {
-  Add,
-  Close,
-  Delete,
-  Edit,
-  LocalOffer,
-  Palette,
-} from '@mui/icons-material';
+import { Add, Delete, Edit, LocalOffer } from '@mui/icons-material';
 import {
   Box,
   Button,

@@ -1,6 +1,10 @@
 import type { Metadata } from 'next';
 
+import { JobExecutor } from '@/components/jobs';
+import { PageTransitionLoader } from '@/components/PageTransitionLoader';
 import { ReduxProvider } from '@/components/ReduxProvider';
+import { NotificationProvider } from '@/contexts/NotificationContext';
+import { ThemeProvider } from '@/contexts/ThemeContext';
 
 import './globals.css';
 
@@ -31,9 +35,17 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body className="antialiased">
-        <ReduxProvider>{children}</ReduxProvider>
+        <ThemeProvider>
+          <ReduxProvider>
+            <NotificationProvider>
+              <PageTransitionLoader />
+              <JobExecutor />
+              {children}
+            </NotificationProvider>
+          </ReduxProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

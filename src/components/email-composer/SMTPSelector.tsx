@@ -6,7 +6,6 @@ import {
   ButtonGroup,
   Chip,
   Divider,
-  IconButton,
   ListItemIcon,
   ListItemText,
   Menu,
@@ -54,8 +53,6 @@ export const SMTPSelector: React.FC<SMTPSelectorProps> = ({
     setTimeout(() => (onSendWithConfig ? onSendWithConfig() : onSend()), 100);
   };
 
-  // Show dropdown arrow only if there are multiple configs
-  const showDropdown = configs.length > 1;
   const currentConfig =
     selectedConfig || configs.find((c) => c.isDefault) || configs[0];
 

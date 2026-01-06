@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Add, Close } from '@mui/icons-material';
+import { Add } from '@mui/icons-material';
 import {
   Box,
   Chip,

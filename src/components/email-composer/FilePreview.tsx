@@ -36,20 +36,29 @@ export const FilePreview: React.FC<FilePreviewProps> = ({
   useEffect(() => {
     if (file && isOpen) {
       const url = URL.createObjectURL(file);
-      setPreviewUrl(url);
 
-      // Read text content for text-based files
-      if (isTextFile(file) || isMarkdownFile(file) || isCsvFile(file)) {
-        readFileAsText(file)
-          .then(setFileContent)
-          .catch(() => setFileContent('Error reading file content'));
-      } else {
-        setFileContent('');
-      }
+      // Use setTimeout to avoid synchronous setState in effect
+      setTimeout(() => {
+        setPreviewUrl(url);
+
+        // Read text content for text-based files
+        if (isTextFile(file) || isMarkdownFile(file) || isCsvFile(file)) {
+          readFileAsText(file)
+            .then(setFileContent)
+            .catch(() => setFileContent('Error reading file content'));
+        } else {
+          setFileContent('');
+        }
+      }, 0);
 
       return () => {
         URL.revokeObjectURL(url);
       };
+    } else {
+      setTimeout(() => {
+        setPreviewUrl('');
+        setFileContent('');
+      }, 0);
     }
   }, [file, isOpen]);
 
@@ -67,6 +76,7 @@ export const FilePreview: React.FC<FilePreviewProps> = ({
 
     if (isImageFile(file)) {
       return (
+        // eslint-disable-next-line @next/next/no-img-element
         <img
           src={previewUrl}
           alt={file.name}

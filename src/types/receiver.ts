@@ -1,7 +1,13 @@
 export interface CSVReceiverInput {
-  fullName: string;
+  no?: string;
+  firstName: string;
   email: string;
-  location: string;
+  github?: string;
+  state: string;
+  telegram?: string;
+  // Legacy fields for backward compatibility
+  fullName?: string;
+  location?: string;
 }
 
 export interface ReceiverTag {
@@ -14,12 +20,18 @@ export interface ReceiverTag {
 export interface ProcessedReceiver {
   id: string;
   rowNumber: number;
-  fullName: string;
+  no?: string;
+  firstName: string;
+  fullName: string; // Computed from firstName or kept for backward compatibility
   emails: string[]; // Changed from single email to array
   originalEmailField: string; // Keep original for reference
-  location: string;
+  github?: string;
+  state: string;
+  stateNormalized?: string; // Normalized state abbreviation
+  telegram?: string;
+  location?: string; // Legacy field
   timezone: string;
-  timezoneSource: 'cache' | 'api' | 'fallback';
+  timezoneSource: 'cache' | 'api' | 'fallback' | 'state';
   tags: ReceiverTag[];
   isValid: boolean;
   validationErrors: string[];

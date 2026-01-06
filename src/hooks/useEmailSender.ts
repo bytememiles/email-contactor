@@ -54,7 +54,6 @@ export const useEmailSender = () => {
 
   const sendEmail = async (
     toRecipients: string[],
-    ccRecipients: string[],
     subject: string,
     markdown: string,
     attachments: File[],
@@ -75,7 +74,6 @@ export const useEmailSender = () => {
         },
         body: JSON.stringify({
           to: toRecipients.join(','),
-          cc: ccRecipients.length > 0 ? ccRecipients.join(',') : undefined,
           subject,
           html: styledHtml,
           text,
@@ -108,7 +106,6 @@ export const useEmailSender = () => {
 
   const startSendCountdown = (
     toRecipients: string[],
-    ccRecipients: string[],
     subject: string,
     markdown: string,
     attachments: File[],
@@ -139,7 +136,6 @@ export const useEmailSender = () => {
       clearInterval(countdownInterval);
       const result = await sendEmail(
         toRecipients,
-        ccRecipients,
         subject,
         markdown,
         attachments,

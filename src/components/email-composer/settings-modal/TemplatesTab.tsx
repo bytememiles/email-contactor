@@ -32,6 +32,7 @@ import {
   Typography,
 } from '@mui/material';
 
+import { useNotification } from '@/contexts/NotificationContext';
 import { useTemplates } from '@/hooks/useTemplates';
 import { addEmailStyles, convertMarkdownToEmail } from '@/lib/markdown';
 import { EmailTemplate, TemplateForm } from '@/types/template';
@@ -43,6 +44,7 @@ interface TemplatesTabProps {
 export const TemplatesTab: React.FC<TemplatesTabProps> = ({
   onTemplateApply,
 }) => {
+  const { showError, showWarning } = useNotification();
   const {
     templates,
     loading,
@@ -150,7 +152,7 @@ export const TemplatesTab: React.FC<TemplatesTabProps> = ({
     if (!file) return;
 
     if (!file.name.endsWith('.md') && !file.name.endsWith('.markdown')) {
-      alert('Please select a Markdown file (.md or .markdown)');
+      showWarning('Please select a Markdown file (.md or .markdown)');
       return;
     }
 
@@ -181,7 +183,7 @@ export const TemplatesTab: React.FC<TemplatesTabProps> = ({
     };
 
     reader.onerror = () => {
-      alert('Error reading file');
+      showError('Error reading file');
       setUploading(false);
     };
 
@@ -383,7 +385,7 @@ export const TemplatesTab: React.FC<TemplatesTabProps> = ({
                             </Tooltip>
                           }
                           secondary={
-                            <Box sx={{ pr: 1 }}>
+                            <Box component="span" sx={{ pr: 1 }}>
                               <Tooltip
                                 title={
                                   template.subject &&
@@ -397,9 +399,9 @@ export const TemplatesTab: React.FC<TemplatesTabProps> = ({
                                   !template.subject ||
                                   !isTextTruncated(template.subject, 40)
                                 }
-                                sx={{ display: 'block' }}
                               >
                                 <Typography
+                                  component="span"
                                   variant="body2"
                                   color="text.secondary"
                                   noWrap
@@ -429,6 +431,7 @@ export const TemplatesTab: React.FC<TemplatesTabProps> = ({
                                 </Typography>
                               </Tooltip>
                               <Typography
+                                component="span"
                                 variant="caption"
                                 color="text.secondary"
                               >

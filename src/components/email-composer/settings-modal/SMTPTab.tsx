@@ -159,18 +159,27 @@ export const SMTPTab: React.FC = () => {
         <Box
           sx={{
             display: 'flex',
-            alignItems: 'center',
+            flexDirection: { xs: 'column', sm: 'row' },
+            alignItems: { xs: 'flex-start', sm: 'center' },
             justifyContent: 'space-between',
             mb: 2,
+            gap: { xs: 2, sm: 0 },
           }}
         >
-          <Typography variant="h6">SMTP Configurations</Typography>
+          <Typography
+            variant="h6"
+            sx={{ fontSize: { xs: '1.125rem', sm: '1.25rem' } }}
+          >
+            SMTP Configurations
+          </Typography>
           {!showForm && (
             <Button
               startIcon={<Add />}
               variant="contained"
               onClick={() => setShowForm(true)}
               size="small"
+              fullWidth={false}
+              sx={{ width: { xs: '100%', sm: 'auto' } }}
             >
               Add Configuration
             </Button>
@@ -181,20 +190,23 @@ export const SMTPTab: React.FC = () => {
           <Box
             sx={{
               mb: 3,
-              p: 2,
+              p: { xs: 1.5, sm: 2 },
               border: 1,
               borderColor: 'divider',
               borderRadius: 1,
             }}
           >
-            <Typography variant="subtitle1" sx={{ mb: 2 }}>
+            <Typography
+              variant="subtitle1"
+              sx={{ mb: 2, fontSize: { xs: '1rem', sm: '1.125rem' } }}
+            >
               {editingConfig ? 'Edit Configuration' : 'Add New Configuration'}
             </Typography>
 
             <Box
               sx={{
                 display: 'grid',
-                gap: 2,
+                gap: { xs: 1.5, sm: 2 },
                 gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
               }}
             >

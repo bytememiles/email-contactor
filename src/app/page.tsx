@@ -2,24 +2,12 @@
 
 import { Box } from '@mui/material';
 import CssBaseline from '@mui/material/CssBaseline';
-import { createTheme, ThemeProvider } from '@mui/material/styles';
 
 import EmailComposer from '@/components/EmailComposer';
 
-const theme = createTheme({
-  palette: {
-    primary: {
-      main: '#1976d2',
-    },
-    secondary: {
-      main: '#dc004e',
-    },
-  },
-});
-
 export default function Home() {
   return (
-    <ThemeProvider theme={theme}>
+    <>
       <CssBaseline />
       <Box
         sx={{
@@ -29,9 +17,8 @@ export default function Home() {
           p: 3,
         }}
       >
-        {/* Email Composer as Main Content */}
         <EmailComposer />
       </Box>
-    </ThemeProvider>
+    </>
   );
 }

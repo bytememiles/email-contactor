@@ -8,6 +8,7 @@ import {
   Refresh,
   Save,
   Upload,
+  Work,
 } from '@mui/icons-material';
 import {
   Alert,
@@ -15,6 +16,9 @@ import {
   Button,
   Card,
   CardContent,
+  Dialog,
+  DialogContent,
+  DialogTitle,
   Snackbar,
   Stack,
   Step,
@@ -31,12 +35,20 @@ import { CSVUpload } from '@/components/batch/CSVUpload';
 import { ReceiversTable } from '@/components/batch/ReceiversTable';
 import { SaveListDialog } from '@/components/batch/SaveListDialog';
 import { StoredListsView } from '@/components/batch/StoredListsView';
+import { JobCreator } from '@/components/jobs';
+import { useNotification } from '@/contexts/NotificationContext';
+import { useEmailJobs } from '@/hooks/useEmailJobs';
+import { useProfiles } from '@/hooks/useProfiles';
 import { useReceiverLists } from '@/hooks/useReceiverLists';
 import { useReceivers } from '@/hooks/useReceivers';
+import { useTemplates } from '@/hooks/useTemplates';
+import { JobForm } from '@/types/job';
 import { CSVUploadResult } from '@/types/receiver';
 import { processReceivers } from '@/utils/csvUtils';
+import { calculateSendTimes, getEarliestSendTime } from '@/utils/scheduling';
 
 export const BatchOperationsTab: React.FC = () => {
+  const { showError, showWarning } = useNotification();
   const {
     receivers,
     tags,
@@ -53,7 +65,6 @@ export const BatchOperationsTab: React.FC = () => {
 
   const {
     lists,
-    currentList,
     loading: listsLoading,
     createReceiverList,
     deleteReceiverList,
@@ -61,6 +72,10 @@ export const BatchOperationsTab: React.FC = () => {
     clearCurrentList,
     exportList,
   } = useReceiverLists();
+
+  const { profiles } = useProfiles();
+  const { templates } = useTemplates();
+  const { createJob } = useEmailJobs();
 
   const [activeTab, setActiveTab] = useState(0);
   const [hasInitializedTab, setHasInitializedTab] = useState(false);
@@ -75,12 +90,17 @@ export const BatchOperationsTab: React.FC = () => {
   const [successMessage, setSuccessMessage] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [listToDelete, setListToDelete] = useState<string | null>(null);
+  const [showJobDialog, setShowJobDialog] = useState(false);
+  const [savedListId, setSavedListId] = useState<string | null>(null);
 
   // Set default tab based on stored lists once they're loaded
   useEffect(() => {
     if (!listsLoading && !hasInitializedTab) {
-      setActiveTab(lists.length > 0 ? 1 : 0); // 1 = Stored Lists, 0 = Upload & Process
-      setHasInitializedTab(true);
+      // Use setTimeout to avoid synchronous setState in effect
+      setTimeout(() => {
+        setActiveTab(lists.length > 0 ? 1 : 0); // 1 = Stored Lists, 0 = Upload & Process
+        setHasInitializedTab(true);
+      }, 0);
     }
   }, [lists.length, listsLoading, hasInitializedTab]);
 
@@ -126,12 +146,60 @@ export const BatchOperationsTab: React.FC = () => {
 
     const newList = createReceiverList(formData, receivers, sourceFileName);
     setShowSaveDialog(false);
+    setSavedListId(newList.id);
 
     // Show success notification
     setSuccessMessage(
       `List "${newList.name}" saved successfully with ${newList.validReceivers} valid receivers!`
     );
     setShowSuccessMessage(true);
+
+    // Show option to create job if profiles and templates are available
+    if (profiles.length > 0 && templates.length > 0) {
+      setTimeout(() => {
+        setShowJobDialog(true);
+      }, 1000);
+    }
+  };
+
+  const handleCreateJob = (jobData: JobForm) => {
+    if (!savedListId) return;
+
+    const receiverList = lists.find((list) => list.id === savedListId);
+    if (!receiverList) {
+      showError('Receiver list not found');
+      return;
+    }
+
+    // Load the full list to get receivers for scheduling
+    loadReceiverList(savedListId).then((fullList) => {
+      if (!fullList) {
+        showError('Could not load receiver list');
+        return;
+      }
+
+      // Parse the send time from the form (format: "HH:mm")
+      const sendTime = jobData.sendTime || '10:00';
+      const [hours, minutes] = sendTime.split(':').map(Number);
+
+      // Calculate send times based on receiver timezones
+      const scheduledTimes = calculateSendTimes(
+        fullList.receivers,
+        new Date(),
+        hours,
+        minutes
+      );
+      const earliestTime = getEarliestSendTime(scheduledTimes) || new Date();
+
+      createJob(jobData, earliestTime, receiverList.validReceivers);
+      setShowJobDialog(false);
+      setSavedListId(null);
+
+      setSuccessMessage(
+        `Job created successfully! Emails will be sent starting at ${earliestTime.toLocaleString()}`
+      );
+      setShowSuccessMessage(true);
+    });
   };
 
   const handleViewStoredList = async (id: string) => {
@@ -188,7 +256,7 @@ export const BatchOperationsTab: React.FC = () => {
     const validReceivers = receivers.filter((r) => r.isValid);
 
     if (validReceivers.length === 0) {
-      alert('No valid receivers to export');
+      showWarning('No valid receivers to export');
       return;
     }
 
@@ -237,18 +305,27 @@ export const BatchOperationsTab: React.FC = () => {
   ];
 
   return (
-    <Box sx={{ maxWidth: '100%', mx: 'auto' }}>
+    <Box sx={{ maxWidth: '100%', mx: 'auto', width: '100%' }}>
       {/* Header */}
-      <Box sx={{ mb: 3 }}>
+      <Box sx={{ mb: { xs: 2, sm: 3 } }}>
         <Typography
           variant="h5"
           gutterBottom
-          sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1,
+            fontSize: { xs: '1.25rem', sm: '1.5rem' },
+          }}
         >
           <Group />
           Batch Operations
         </Typography>
-        <Typography variant="body2" color="text.secondary">
+        <Typography
+          variant="body2"
+          color="text.secondary"
+          sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}
+        >
           Upload CSV files with receiver information, validate data, assign
           tags, and manage recipients efficiently.
         </Typography>
@@ -258,7 +335,18 @@ export const BatchOperationsTab: React.FC = () => {
       <Tabs
         value={activeTab}
         onChange={handleTabChange}
-        sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}
+        sx={{
+          borderBottom: 1,
+          borderColor: 'divider',
+          mb: { xs: 2, sm: 3 },
+          '& .MuiTab-root': {
+            fontSize: { xs: '0.875rem', sm: '1rem' },
+            minHeight: { xs: 48, sm: 72 },
+            padding: { xs: '12px 8px', sm: '12px 16px' },
+          },
+        }}
+        variant="scrollable"
+        scrollButtons="auto"
       >
         <Tab icon={<Upload />} label="Upload & Process" iconPosition="start" />
         <Tab
@@ -303,11 +391,17 @@ export const BatchOperationsTab: React.FC = () => {
                   </Box>
                 )}
 
-                <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
+                <Stack
+                  direction={{ xs: 'column', sm: 'row' }}
+                  spacing={2}
+                  sx={{ mt: 2 }}
+                >
                   <Button
                     startIcon={<Refresh />}
                     onClick={() => setActiveStep(0)}
                     variant="outlined"
+                    fullWidth={false}
+                    sx={{ width: { xs: '100%', sm: 'auto' } }}
                   >
                     Upload New File
                   </Button>
@@ -318,14 +412,32 @@ export const BatchOperationsTab: React.FC = () => {
                         onClick={() => setShowSaveDialog(true)}
                         variant="contained"
                         color="primary"
+                        fullWidth={false}
+                        sx={{ width: { xs: '100%', sm: 'auto' } }}
                       >
                         Save List
                       </Button>
+                      {savedListId &&
+                        profiles.length > 0 &&
+                        templates.length > 0 && (
+                          <Button
+                            startIcon={<Work />}
+                            onClick={() => setShowJobDialog(true)}
+                            variant="contained"
+                            color="secondary"
+                            fullWidth={false}
+                            sx={{ width: { xs: '100%', sm: 'auto' } }}
+                          >
+                            Create Email Job
+                          </Button>
+                        )}
                       <Button
                         startIcon={<Download />}
                         onClick={handleExportValid}
                         variant="outlined"
                         color="success"
+                        fullWidth={false}
+                        sx={{ width: { xs: '100%', sm: 'auto' } }}
                       >
                         Export Valid Receivers
                       </Button>
@@ -334,6 +446,8 @@ export const BatchOperationsTab: React.FC = () => {
                         onClick={handleClearAll}
                         variant="outlined"
                         color="error"
+                        fullWidth={false}
+                        sx={{ width: { xs: '100%', sm: 'auto' } }}
                       >
                         Clear All
                       </Button>
@@ -346,7 +460,7 @@ export const BatchOperationsTab: React.FC = () => {
 
           {/* Stepper */}
           <Stepper activeStep={activeStep} orientation="vertical">
-            {steps.map((step, index) => (
+            {steps.map((step) => (
               <Step key={step.label}>
                 <StepLabel>
                   <Typography variant="h6">{step.label}</Typography>
@@ -427,6 +541,33 @@ export const BatchOperationsTab: React.FC = () => {
             : null
         }
       />
+
+      {/* Job Creation Dialog */}
+      <Dialog
+        open={showJobDialog}
+        onClose={() => {
+          setShowJobDialog(false);
+          setSavedListId(null);
+        }}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>Create Email Job</DialogTitle>
+        <DialogContent>
+          {savedListId && (
+            <JobCreator
+              profiles={profiles}
+              templates={templates}
+              receiverLists={lists.filter((list) => list.id === savedListId)}
+              onSubmit={handleCreateJob}
+              onCancel={() => {
+                setShowJobDialog(false);
+                setSavedListId(null);
+              }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </Box>
   );
 };
