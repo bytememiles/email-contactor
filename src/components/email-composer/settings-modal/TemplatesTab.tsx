@@ -400,6 +400,7 @@ export const TemplatesTab: React.FC<TemplatesTabProps> = ({
                                 sx={{ display: 'block' }}
                               >
                                 <Typography
+                                  component="span"
                                   variant="body2"
                                   color="text.secondary"
                                   noWrap
@@ -429,6 +430,7 @@ export const TemplatesTab: React.FC<TemplatesTabProps> = ({
                                 </Typography>
                               </Tooltip>
                               <Typography
+                                component="span"
                                 variant="caption"
                                 color="text.secondary"
                               >
