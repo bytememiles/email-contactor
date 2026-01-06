@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 
 import { JobExecutor } from '@/components/jobs';
+import { PageTransitionLoader } from '@/components/PageTransitionLoader';
 import { ReduxProvider } from '@/components/ReduxProvider';
 import { NotificationProvider } from '@/contexts/NotificationContext';
 import { ThemeProvider } from '@/contexts/ThemeContext';
@@ -39,6 +40,7 @@ export default function RootLayout({
         <ThemeProvider>
           <ReduxProvider>
             <NotificationProvider>
+              <PageTransitionLoader />
               <JobExecutor />
               {children}
             </NotificationProvider>

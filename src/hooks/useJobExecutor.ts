@@ -428,13 +428,15 @@ export const useJobExecutor = (deps: JobExecutorDependencies) => {
     }, POLLING_INTERVAL_MS);
 
     // Cleanup on unmount
+    // Capture ref value at effect time to avoid stale closure
+    const executingJobsAtEffectTime = executingJobsRef.current;
+
     return () => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
       }
-      // Clear executing jobs set on unmount - capture current ref value
-      const executingJobs = executingJobsRef.current;
-      executingJobs.clear();
+      // Clear executing jobs set on unmount - use captured value
+      executingJobsAtEffectTime.clear();
     };
   }, [checkAndExecuteJobs]);
 

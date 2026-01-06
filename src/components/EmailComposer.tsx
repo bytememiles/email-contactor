@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Close } from '@mui/icons-material';
+import { useRouter } from 'next/navigation';
+import { Close, Settings } from '@mui/icons-material';
 import {
   Alert,
   Box,
@@ -31,6 +32,8 @@ import { useSMTPConfigsRedux } from '@/hooks/useSMTPConfigsRedux';
 import { EmailComposerProps, EmailPriority } from '@/types/email';
 
 export default function EmailComposer({ onClose, onSend }: EmailComposerProps) {
+  const router = useRouter();
+
   // Form state
   const [toRecipients, setToRecipients] = useState<string[]>([]);
   const [subject, setSubject] = useState('');
@@ -224,6 +227,14 @@ export default function EmailComposer({ onClose, onSend }: EmailComposerProps) {
             Compose Email
           </Typography>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <IconButton
+              size="small"
+              sx={{ color: 'inherit' }}
+              onClick={() => router.push('/settings')}
+              title="Settings"
+            >
+              <Settings fontSize="small" />
+            </IconButton>
             {onClose && (
               <IconButton
                 size="small"
