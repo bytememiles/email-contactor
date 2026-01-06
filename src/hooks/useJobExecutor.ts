@@ -9,6 +9,23 @@ import { ProcessedReceiver } from '@/types/receiver';
 import { SMTPConfig } from '@/types/smtp';
 import { EmailTemplate } from '@/types/template';
 
+// Type for the debug API exposed on window
+interface JobExecutorDebugAPI {
+  checkAndExecuteJobs: () => void;
+  getStatus: () => {
+    isProcessing: boolean;
+    executingJobs: string[];
+    pollingInterval: number;
+  };
+}
+
+// Extend Window interface to include the debug API
+declare global {
+  interface Window {
+    __jobExecutor?: JobExecutorDebugAPI;
+  }
+}
+
 interface JobExecutorDependencies {
   jobs: EmailJob[];
   getJob: (id: string) => EmailJob | undefined;
@@ -45,7 +62,7 @@ const API_TIMEOUT_MS = 30000; // 30 seconds timeout for API calls
 const BASE_DELAY_MS = 200; // Base delay between emails (increased from 100ms)
 const MAX_RETRIES = 3; // Maximum retries for transient failures
 const RETRY_DELAY_MS = 1000; // Initial retry delay
-const POLLING_INTERVAL_MS = 60000; // Check every minute
+const POLLING_INTERVAL_MS = 10000; // Check every 10 seconds (reduced from 60s for better responsiveness)
 
 /**
  * Replace template placeholders with actual values
@@ -202,7 +219,7 @@ async function executeJob(
   const currentJob = getJob(job.id);
   if (!currentJob) {
     const message = `Job ${job.id} no longer exists, skipping execution`;
-    console.warn(message);
+    console.warn(`[JobExecutor] ${message}`);
     showNotification.showWarning(message);
     return;
   }
@@ -214,10 +231,17 @@ async function executeJob(
     currentJob.status === 'failed'
   ) {
     const message = `Job ${job.id} is already ${currentJob.status}, skipping execution`;
-    console.warn(message);
+    console.warn(`[JobExecutor] ${message}`);
     showNotification.showWarning(message);
     return;
   }
+
+  console.log(`[JobExecutor] Executing job ${job.id.substring(0, 8)}...`, {
+    profileId: job.profileId,
+    templateId: job.templateId,
+    receiverListId: job.receiverListId,
+    scheduledTime: job.scheduledTime.toISOString(),
+  });
 
   try {
     // Update job status to 'sending' atomically
@@ -227,45 +251,65 @@ async function executeJob(
     );
 
     // Load receiver list
+    console.log(`[JobExecutor] Loading receiver list: ${job.receiverListId}`);
     const receiverList = await loadReceiverList(job.receiverListId);
     if (!receiverList) {
       const error = 'Receiver list not found';
+      console.error(`[JobExecutor] ${error}: ${job.receiverListId}`);
       addJobError(job.id, error);
       throw new Error(error);
     }
+    console.log(
+      `[JobExecutor] Loaded receiver list with ${receiverList.receivers.length} receivers`
+    );
 
     // Load template
+    console.log(`[JobExecutor] Loading template: ${job.templateId}`);
     const template = getTemplate(job.templateId);
     if (!template) {
       const error = 'Template not found';
+      console.error(`[JobExecutor] ${error}: ${job.templateId}`);
       addJobError(job.id, error);
       throw new Error(error);
     }
+    console.log(`[JobExecutor] Loaded template: ${template.name}`);
 
     // Load profile
+    console.log(`[JobExecutor] Loading profile: ${job.profileId}`);
     const profile = getProfile(job.profileId);
     if (!profile) {
       const error = 'Profile not found';
+      console.error(`[JobExecutor] ${error}: ${job.profileId}`);
       addJobError(job.id, error);
       throw new Error(error);
     }
+    console.log(`[JobExecutor] Loaded profile: ${profile.fullName}`);
 
     // Load SMTP config
+    console.log(`[JobExecutor] Loading SMTP config: ${profile.smtpConfigId}`);
     const smtpConfig = getSMTPConfig(profile.smtpConfigId);
     if (!smtpConfig) {
       const error = `SMTP configuration not found: ${profile.smtpConfigId}`;
+      console.error(`[JobExecutor] ${error}`);
       addJobError(job.id, error);
       throw new Error(error);
     }
+    console.log(
+      `[JobExecutor] Loaded SMTP config: ${smtpConfig.host}:${smtpConfig.port}`
+    );
 
     // Get sender name from profile (we'll use fullName)
     const senderName = profile.fullName || 'Sender';
 
     // Filter valid receivers
     const validReceivers = receiverList.receivers.filter((r) => r.isValid);
+    console.log(
+      `[JobExecutor] Found ${validReceivers.length} valid receivers out of ${receiverList.receivers.length} total`
+    );
 
     if (validReceivers.length === 0) {
       const error = 'No valid receivers found';
+      console.error(`[JobExecutor] ${error}`);
       addJobError(job.id, error);
       throw new Error(error);
     }
@@ -294,6 +338,9 @@ async function executeJob(
 
         // Send email to all email addresses for this receiver
         for (const email of receiver.emails) {
+          console.log(
+            `[JobExecutor] Sending email to ${email} (receiver: ${receiver.id})`
+          );
           const success = await sendEmailWithRetry({
             to: email,
             subject: personalizedSubject,
@@ -304,9 +351,11 @@ async function executeJob(
 
           if (success) {
             sentCount++;
+            console.log(`[JobExecutor] ✓ Email sent successfully to ${email}`);
           } else {
             failedCount++;
             const errorMessage = `Failed to send email to ${email}`;
+            console.error(`[JobExecutor] ✗ ${errorMessage}`);
             addJobError(job.id, errorMessage, email, receiver.id);
           }
 
@@ -380,11 +429,15 @@ export const useJobExecutor = (deps: JobExecutorDependencies) => {
   const checkAndExecuteJobs = useCallback(async () => {
     // Prevent concurrent executions
     if (isProcessingRef.current) {
+      console.log('[JobExecutor] Already processing jobs, skipping check');
       return;
     }
 
     const now = new Date();
     const currentDeps = depsRef.current;
+
+    console.log(`[JobExecutor] Checking for due jobs at ${now.toISOString()}`);
+    console.log(`[JobExecutor] Total jobs: ${currentDeps.jobs.length}`);
 
     // Filter jobs that are due and not already executing
     const dueJobs = currentDeps.jobs.filter(
@@ -395,8 +448,32 @@ export const useJobExecutor = (deps: JobExecutorDependencies) => {
     );
 
     if (dueJobs.length === 0) {
+      const scheduledJobs = currentDeps.jobs.filter(
+        (job) => job.status === 'scheduled' || job.status === 'pending'
+      );
+      if (scheduledJobs.length > 0) {
+        console.log(
+          `[JobExecutor] No due jobs. ${scheduledJobs.length} scheduled job(s) found:`,
+          scheduledJobs.map((j) => ({
+            id: j.id.substring(0, 8),
+            status: j.status,
+            scheduledTime: j.scheduledTime.toISOString(),
+            timeUntil:
+              Math.round((j.scheduledTime.getTime() - now.getTime()) / 1000) +
+              's',
+          }))
+        );
+      }
       return;
     }
+
+    console.log(
+      `[JobExecutor] Found ${dueJobs.length} due job(s):`,
+      dueJobs.map((j) => ({
+        id: j.id.substring(0, 8),
+        scheduledTime: j.scheduledTime.toISOString(),
+      }))
+    );
 
     isProcessingRef.current = true;
 
@@ -407,7 +484,13 @@ export const useJobExecutor = (deps: JobExecutorDependencies) => {
         executingJobsRef.current.add(job.id);
 
         try {
+          console.log(
+            `[JobExecutor] Starting execution of job ${job.id.substring(0, 8)}...`
+          );
           await executeJob(job, currentDeps, showNotification);
+          console.log(
+            `[JobExecutor] Completed execution of job ${job.id.substring(0, 8)}`
+          );
         } finally {
           // Remove from executing set when done (success or failure)
           executingJobsRef.current.delete(job.id);
@@ -419,6 +502,11 @@ export const useJobExecutor = (deps: JobExecutorDependencies) => {
   }, [showNotification]); // Include showNotification in dependencies
 
   useEffect(() => {
+    console.log('[JobExecutor] Initializing job executor...');
+    console.log(
+      `[JobExecutor] Polling interval: ${POLLING_INTERVAL_MS}ms (${POLLING_INTERVAL_MS / 1000}s)`
+    );
+
     // Check immediately on mount
     checkAndExecuteJobs();
 
@@ -427,16 +515,40 @@ export const useJobExecutor = (deps: JobExecutorDependencies) => {
       checkAndExecuteJobs();
     }, POLLING_INTERVAL_MS);
 
+    console.log('[JobExecutor] Job executor initialized and polling started');
+
     // Cleanup on unmount
     // Capture ref value at effect time to avoid stale closure
     const executingJobsAtEffectTime = executingJobsRef.current;
 
     return () => {
+      console.log('[JobExecutor] Cleaning up job executor...');
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
       }
       // Clear executing jobs set on unmount - use captured value
       executingJobsAtEffectTime.clear();
+    };
+  }, [checkAndExecuteJobs]);
+
+  // Expose checkAndExecuteJobs for manual triggering (useful for debugging)
+  // This allows manual job execution from browser console: window.__jobExecutor?.checkAndExecuteJobs()
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.__jobExecutor = {
+        checkAndExecuteJobs,
+        getStatus: () => ({
+          isProcessing: isProcessingRef.current,
+          executingJobs: Array.from(executingJobsRef.current),
+          pollingInterval: POLLING_INTERVAL_MS,
+        }),
+      };
+      console.log('[JobExecutor] Debug API available: window.__jobExecutor');
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        delete window.__jobExecutor;
+      }
     };
   }, [checkAndExecuteJobs]);
 

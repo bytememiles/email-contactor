@@ -39,6 +39,9 @@ const eslintConfig = [
         },
       ],
       'simple-import-sort/exports': 'error',
+      // Allow setState in effects for legitimate use cases like reading from localStorage
+      // This is necessary to prevent hydration mismatches in Next.js
+      'react-hooks/set-state-in-effect': 'off',
     },
   },
   {

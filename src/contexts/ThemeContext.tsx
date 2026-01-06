@@ -5,6 +5,7 @@ import React, {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useState,
 } from 'react';
 import {
@@ -35,27 +36,28 @@ const THEME_STORAGE_KEY = 'theme-mode';
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  // Initialize state with function to read from localStorage
-  const [mode, setModeState] = useState<PaletteMode>(() => {
-    // Only run on client side
-    if (typeof window === 'undefined') {
-      return 'light';
-    }
+  // Always start with 'light' to match SSR, then update after mount
+  const [mode, setModeState] = useState<PaletteMode>('light');
+
+  // Load theme from localStorage after mount to prevent hydration mismatch
+  // Use useLayoutEffect to set theme before browser paint to reduce flash
+
+  useLayoutEffect(() => {
     try {
       const stored = localStorage.getItem(THEME_STORAGE_KEY);
       if (stored === 'dark' || stored === 'light') {
-        return stored;
+        setModeState(stored);
+        return;
       }
       // Check system preference
       const prefersDark = window.matchMedia(
         '(prefers-color-scheme: dark)'
       ).matches;
-      return prefersDark ? 'dark' : 'light';
+      setModeState(prefersDark ? 'dark' : 'light');
     } catch (error) {
       console.error('Error loading theme:', error);
-      return 'light';
     }
-  });
+  }, []); // Empty deps - only run once on mount
 
   // Sync with system preference changes (optional)
   useEffect(() => {

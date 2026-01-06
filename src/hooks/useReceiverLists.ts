@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import {
   ProcessedReceiver,
@@ -10,31 +10,101 @@ import {
 
 const STORAGE_KEY_LISTS = 'receiver_lists';
 
+// Helper to convert ReceiverList to ReceiverListSummary
+const toSummary = (list: ReceiverList): ReceiverListSummary => ({
+  id: list.id,
+  name: list.name,
+  description: list.description,
+  createdAt: list.createdAt,
+  updatedAt: list.updatedAt,
+  sourceFileName: list.sourceFileName,
+  totalReceivers: list.totalReceivers,
+  validReceivers: list.validReceivers,
+});
+
+// Helper to parse a stored list from localStorage
+const parseStoredList = (stored: unknown): ReceiverList => {
+  const listData = stored as Omit<ReceiverList, 'createdAt' | 'updatedAt'> & {
+    createdAt: string;
+    updatedAt: string;
+    receivers?: unknown[];
+  };
+
+  return {
+    ...listData,
+    createdAt: new Date(listData.createdAt),
+    updatedAt: new Date(listData.updatedAt),
+    receivers: (listData.receivers || []).map((receiver: unknown) => {
+      const receiverData = receiver as ProcessedReceiver;
+      return {
+        ...receiverData,
+        tags: receiverData.tags.map((tag: unknown) => {
+          const tagData = tag as Omit<ReceiverTag, 'createdAt'> & {
+            createdAt: string;
+          };
+          return {
+            ...tagData,
+            createdAt: new Date(tagData.createdAt),
+          };
+        }),
+      };
+    }),
+  };
+};
+
 export const useReceiverLists = () => {
-  const [lists, setLists] = useState<ReceiverListSummary[]>([]);
+  // Internal state stores full ReceiverList objects
+  const [fullLists, setFullLists] = useState<ReceiverList[]>([]);
   const [currentList, setCurrentList] = useState<ReceiverList | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Load list summaries from localStorage on mount
+  // Load lists from localStorage on mount
   useEffect(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY_LISTS);
       if (stored) {
-        const parsedLists = JSON.parse(stored).map((list: unknown) => {
-          const listData = list as Omit<
-            ReceiverListSummary,
-            'createdAt' | 'updatedAt'
-          > & {
-            createdAt: string;
-            updatedAt: string;
-          };
-          return {
-            ...listData,
-            createdAt: new Date(listData.createdAt),
-            updatedAt: new Date(listData.updatedAt),
-          };
-        });
-        setLists(parsedLists);
+        const parsed = JSON.parse(stored);
+
+        // Handle migration: if it's an array of summaries, try to load full data from old format
+        if (Array.isArray(parsed)) {
+          const loadedLists: ReceiverList[] = [];
+
+          for (const item of parsed) {
+            // Check if it's a full list (has receivers property)
+            if (item.receivers && Array.isArray(item.receivers)) {
+              loadedLists.push(parseStoredList(item));
+            } else {
+              // It's a summary - try to load from old format
+              const oldKey = `receiver_list_${item.id}`;
+              const oldStored = localStorage.getItem(oldKey);
+              if (oldStored) {
+                loadedLists.push(parseStoredList(JSON.parse(oldStored)));
+                // Clean up old storage
+                localStorage.removeItem(oldKey);
+              } else {
+                // If old data not found, skip this list (data loss, but better than crash)
+                console.warn(`Could not migrate list ${item.id}, skipping`);
+              }
+            }
+          }
+
+          // Save in new format and clean up old keys
+          if (loadedLists.length > 0) {
+            localStorage.setItem(
+              STORAGE_KEY_LISTS,
+              JSON.stringify(loadedLists)
+            );
+            // Clean up any remaining old format keys
+            for (const item of parsed) {
+              if (item.id) {
+                const oldKey = `receiver_list_${item.id}`;
+                localStorage.removeItem(oldKey);
+              }
+            }
+          }
+
+          setFullLists(loadedLists);
+        }
       }
     } catch (error) {
       console.error('Error loading receiver lists:', error);
@@ -44,22 +114,12 @@ export const useReceiverLists = () => {
   }, []);
 
   // Save lists to localStorage
-  const saveLists = useCallback((newLists: ReceiverListSummary[]) => {
+  const saveLists = useCallback((newLists: ReceiverList[]) => {
     try {
       localStorage.setItem(STORAGE_KEY_LISTS, JSON.stringify(newLists));
-      setLists(newLists);
+      setFullLists(newLists);
     } catch (error) {
       console.error('Error saving receiver lists:', error);
-    }
-  }, []);
-
-  // Save a complete receiver list
-  const saveReceiverList = useCallback((list: ReceiverList) => {
-    try {
-      const listKey = `receiver_list_${list.id}`;
-      localStorage.setItem(listKey, JSON.stringify(list));
-    } catch (error) {
-      console.error('Error saving receiver list data:', error);
     }
   }, []);
 
@@ -67,33 +127,8 @@ export const useReceiverLists = () => {
   const loadReceiverList = useCallback(
     async (id: string): Promise<ReceiverList | null> => {
       try {
-        const listKey = `receiver_list_${id}`;
-        const stored = localStorage.getItem(listKey);
-        if (stored) {
-          const parsedList = JSON.parse(stored);
-
-          // Convert date strings back to Date objects
-          const list: ReceiverList = {
-            ...parsedList,
-            createdAt: new Date(parsedList.createdAt),
-            updatedAt: new Date(parsedList.updatedAt),
-            receivers: parsedList.receivers.map((receiver: unknown) => {
-              const receiverData = receiver as ProcessedReceiver;
-              return {
-                ...receiverData,
-                tags: receiverData.tags.map((tag: unknown) => {
-                  const tagData = tag as Omit<ReceiverTag, 'createdAt'> & {
-                    createdAt: string;
-                  };
-                  return {
-                    ...tagData,
-                    createdAt: new Date(tagData.createdAt),
-                  };
-                }),
-              };
-            }),
-          };
-
+        const list = fullLists.find((l) => l.id === id);
+        if (list) {
           setCurrentList(list);
           return list;
         }
@@ -102,7 +137,7 @@ export const useReceiverLists = () => {
       }
       return null;
     },
-    []
+    [fullLists]
   );
 
   // Create a new receiver list from processed receivers
@@ -127,27 +162,13 @@ export const useReceiverLists = () => {
       };
 
       // Save the complete list
-      saveReceiverList(newList);
-
-      // Update the summaries
-      const newSummary: ReceiverListSummary = {
-        id: newList.id,
-        name: newList.name,
-        description: newList.description,
-        createdAt: newList.createdAt,
-        updatedAt: newList.updatedAt,
-        sourceFileName: newList.sourceFileName,
-        totalReceivers: newList.totalReceivers,
-        validReceivers: newList.validReceivers,
-      };
-
-      const updatedLists = [...lists, newSummary];
+      const updatedLists = [...fullLists, newList];
       saveLists(updatedLists);
       setCurrentList(newList);
 
       return newList;
     },
-    [lists, saveLists, saveReceiverList]
+    [fullLists, saveLists]
   );
 
   // Update an existing receiver list
@@ -157,7 +178,7 @@ export const useReceiverLists = () => {
       formData: ReceiverListForm,
       receivers?: ProcessedReceiver[]
     ) => {
-      const existingList = lists.find((list) => list.id === id);
+      const existingList = fullLists.find((list) => list.id === id);
       if (!existingList) return;
 
       const validReceivers = receivers
@@ -177,26 +198,12 @@ export const useReceiverLists = () => {
         validReceivers: receivers
           ? validReceivers.length
           : existingList.validReceivers,
-        receivers: receivers || currentList?.receivers || [],
+        receivers: receivers || existingList.receivers || [],
       };
 
-      // Save the complete list
-      saveReceiverList(updatedList);
-
-      // Update the summaries
-      const updatedSummary: ReceiverListSummary = {
-        id: updatedList.id,
-        name: updatedList.name,
-        description: updatedList.description,
-        createdAt: updatedList.createdAt,
-        updatedAt: updatedList.updatedAt,
-        sourceFileName: updatedList.sourceFileName,
-        totalReceivers: updatedList.totalReceivers,
-        validReceivers: updatedList.validReceivers,
-      };
-
-      const updatedLists = lists.map((list) =>
-        list.id === id ? updatedSummary : list
+      // Update the lists array
+      const updatedLists = fullLists.map((list) =>
+        list.id === id ? updatedList : list
       );
       saveLists(updatedLists);
 
@@ -204,20 +211,16 @@ export const useReceiverLists = () => {
         setCurrentList(updatedList);
       }
     },
-    [lists, currentList, saveLists, saveReceiverList]
+    [fullLists, currentList, saveLists]
   );
 
   // Delete a receiver list
   const deleteReceiverList = useCallback(
     (id: string) => {
       try {
-        // Remove from summaries
-        const updatedLists = lists.filter((list) => list.id !== id);
+        // Remove from lists
+        const updatedLists = fullLists.filter((list) => list.id !== id);
         saveLists(updatedLists);
-
-        // Remove the complete list data
-        const listKey = `receiver_list_${id}`;
-        localStorage.removeItem(listKey);
 
         // Clear current list if it's the one being deleted
         if (currentList?.id === id) {
@@ -227,7 +230,7 @@ export const useReceiverLists = () => {
         console.error('Error deleting receiver list:', error);
       }
     },
-    [lists, currentList, saveLists]
+    [fullLists, currentList, saveLists]
   );
 
   // Clear current list
@@ -237,11 +240,17 @@ export const useReceiverLists = () => {
 
   // Get list summary by ID
   const getListSummary = useCallback(
-    (id: string) => {
-      return lists.find((list) => list.id === id);
+    (id: string): ReceiverListSummary | undefined => {
+      const list = fullLists.find((list) => list.id === id);
+      return list ? toSummary(list) : undefined;
     },
-    [lists]
+    [fullLists]
   );
+
+  // Get list summaries (for components that only need metadata)
+  const getListSummaries = useCallback((): ReceiverListSummary[] => {
+    return fullLists.map(toSummary);
+  }, [fullLists]);
 
   // Export list as CSV
   const exportList = useCallback(
@@ -284,8 +293,11 @@ export const useReceiverLists = () => {
     [getListSummary, loadReceiverList]
   );
 
+  // Expose summaries as 'lists' for backward compatibility with components
+  const listSummaries = useMemo(() => fullLists.map(toSummary), [fullLists]);
+
   return {
-    lists,
+    lists: listSummaries, // Return summaries for backward compatibility
     currentList,
     loading,
     createReceiverList,
@@ -294,6 +306,7 @@ export const useReceiverLists = () => {
     loadReceiverList,
     clearCurrentList,
     getListSummary,
+    getListSummaries,
     exportList,
   };
 };
