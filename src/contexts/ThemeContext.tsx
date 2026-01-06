@@ -97,6 +97,16 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({
           secondary: {
             main: '#dc004e',
           },
+          ...(mode === 'dark' && {
+            background: {
+              default: '#1a1a1a', // Lighter dark background (default is #121212)
+              paper: '#2a2a2a', // Lighter paper background (default is #1e1e1e)
+            },
+            text: {
+              primary: 'rgba(255, 255, 255, 0.95)', // Slightly brighter text
+              secondary: 'rgba(255, 255, 255, 0.7)',
+            },
+          }),
         },
       }),
     [mode]

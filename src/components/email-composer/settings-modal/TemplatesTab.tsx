@@ -383,7 +383,7 @@ export const TemplatesTab: React.FC<TemplatesTabProps> = ({
                             </Tooltip>
                           }
                           secondary={
-                            <Box sx={{ pr: 1 }}>
+                            <Box component="span" sx={{ pr: 1 }}>
                               <Tooltip
                                 title={
                                   template.subject &&
@@ -397,7 +397,6 @@ export const TemplatesTab: React.FC<TemplatesTabProps> = ({
                                   !template.subject ||
                                   !isTextTruncated(template.subject, 40)
                                 }
-                                sx={{ display: 'block' }}
                               >
                                 <Typography
                                   component="span"

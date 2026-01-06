@@ -303,18 +303,27 @@ export const BatchOperationsTab: React.FC = () => {
   ];
 
   return (
-    <Box sx={{ maxWidth: '100%', mx: 'auto' }}>
+    <Box sx={{ maxWidth: '100%', mx: 'auto', width: '100%' }}>
       {/* Header */}
-      <Box sx={{ mb: 3 }}>
+      <Box sx={{ mb: { xs: 2, sm: 3 } }}>
         <Typography
           variant="h5"
           gutterBottom
-          sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1,
+            fontSize: { xs: '1.25rem', sm: '1.5rem' },
+          }}
         >
           <Group />
           Batch Operations
         </Typography>
-        <Typography variant="body2" color="text.secondary">
+        <Typography
+          variant="body2"
+          color="text.secondary"
+          sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}
+        >
           Upload CSV files with receiver information, validate data, assign
           tags, and manage recipients efficiently.
         </Typography>
@@ -324,7 +333,18 @@ export const BatchOperationsTab: React.FC = () => {
       <Tabs
         value={activeTab}
         onChange={handleTabChange}
-        sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}
+        sx={{
+          borderBottom: 1,
+          borderColor: 'divider',
+          mb: { xs: 2, sm: 3 },
+          '& .MuiTab-root': {
+            fontSize: { xs: '0.875rem', sm: '1rem' },
+            minHeight: { xs: 48, sm: 72 },
+            padding: { xs: '12px 8px', sm: '12px 16px' },
+          },
+        }}
+        variant="scrollable"
+        scrollButtons="auto"
       >
         <Tab icon={<Upload />} label="Upload & Process" iconPosition="start" />
         <Tab
@@ -369,11 +389,17 @@ export const BatchOperationsTab: React.FC = () => {
                   </Box>
                 )}
 
-                <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
+                <Stack
+                  direction={{ xs: 'column', sm: 'row' }}
+                  spacing={2}
+                  sx={{ mt: 2 }}
+                >
                   <Button
                     startIcon={<Refresh />}
                     onClick={() => setActiveStep(0)}
                     variant="outlined"
+                    fullWidth={false}
+                    sx={{ width: { xs: '100%', sm: 'auto' } }}
                   >
                     Upload New File
                   </Button>
@@ -384,6 +410,8 @@ export const BatchOperationsTab: React.FC = () => {
                         onClick={() => setShowSaveDialog(true)}
                         variant="contained"
                         color="primary"
+                        fullWidth={false}
+                        sx={{ width: { xs: '100%', sm: 'auto' } }}
                       >
                         Save List
                       </Button>
@@ -395,6 +423,8 @@ export const BatchOperationsTab: React.FC = () => {
                             onClick={() => setShowJobDialog(true)}
                             variant="contained"
                             color="secondary"
+                            fullWidth={false}
+                            sx={{ width: { xs: '100%', sm: 'auto' } }}
                           >
                             Create Email Job
                           </Button>
@@ -404,6 +434,8 @@ export const BatchOperationsTab: React.FC = () => {
                         onClick={handleExportValid}
                         variant="outlined"
                         color="success"
+                        fullWidth={false}
+                        sx={{ width: { xs: '100%', sm: 'auto' } }}
                       >
                         Export Valid Receivers
                       </Button>
@@ -412,6 +444,8 @@ export const BatchOperationsTab: React.FC = () => {
                         onClick={handleClearAll}
                         variant="outlined"
                         color="error"
+                        fullWidth={false}
+                        sx={{ width: { xs: '100%', sm: 'auto' } }}
                       >
                         Clear All
                       </Button>

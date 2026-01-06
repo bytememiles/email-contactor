@@ -101,28 +101,47 @@ export default function JobsPage() {
   );
 
   return (
-    <Box>
+    <Box sx={{ width: '100%', maxWidth: '100%', overflow: 'hidden' }}>
       <Box
         sx={{
           display: 'flex',
-          alignItems: 'center',
+          flexDirection: { xs: 'column', sm: 'row' },
+          alignItems: { xs: 'flex-start', sm: 'center' },
           justifyContent: 'space-between',
-          mb: 3,
+          mb: { xs: 2, sm: 3 },
+          gap: { xs: 2, sm: 0 },
         }}
       >
-        <Box>
-          <Typography variant="h4" gutterBottom>
+        <Box sx={{ flex: 1 }}>
+          <Typography
+            variant="h4"
+            gutterBottom
+            sx={{ fontSize: { xs: '1.5rem', sm: '2rem' } }}
+          >
             Email Jobs
           </Typography>
-          <Typography variant="body2" color="text.secondary">
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}
+          >
             View and manage scheduled email jobs.
           </Typography>
         </Box>
-        <Box sx={{ display: 'flex', gap: 2 }}>
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: { xs: 'column', sm: 'row' },
+            gap: 2,
+            width: { xs: '100%', sm: 'auto' },
+          }}
+        >
           <Button
             startIcon={<History />}
             variant="outlined"
             onClick={() => router.push('/settings/jobs/history')}
+            fullWidth={false}
+            sx={{ width: { xs: '100%', sm: 'auto' } }}
           >
             View History
           </Button>
@@ -135,6 +154,8 @@ export default function JobsPage() {
               templates.length === 0 ||
               lists.length === 0
             }
+            fullWidth={false}
+            sx={{ width: { xs: '100%', sm: 'auto' } }}
           >
             Create Job
           </Button>
@@ -153,11 +174,22 @@ export default function JobsPage() {
         />
       )}
 
-      <Dialog open={showForm} onClose={handleCancel} maxWidth="md" fullWidth>
-        <DialogTitle>
+      <Dialog
+        open={showForm}
+        onClose={handleCancel}
+        maxWidth="md"
+        fullWidth
+        PaperProps={{
+          sx: {
+            m: { xs: 1, sm: 2 },
+            maxHeight: { xs: '90vh', sm: 'auto' },
+          },
+        }}
+      >
+        <DialogTitle sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' } }}>
           {editingJob ? 'Edit Email Job' : 'Create Email Job'}
         </DialogTitle>
-        <DialogContent>
+        <DialogContent sx={{ p: { xs: 2, sm: 3 } }}>
           <JobCreator
             profiles={profiles}
             templates={templates}

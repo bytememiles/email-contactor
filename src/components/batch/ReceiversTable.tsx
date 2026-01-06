@@ -194,20 +194,30 @@ export const ReceiversTable: React.FC<ReceiversTableProps> = ({
         <Typography variant="h6" gutterBottom>
           Receivers Summary
         </Typography>
-        <Stack direction="row" spacing={2}>
+        <Stack
+          direction={{ xs: 'column', sm: 'row' }}
+          spacing={2}
+          sx={{ flexWrap: 'wrap' }}
+        >
           <Chip
             icon={<CheckCircle />}
             label={`Valid: ${validCount}`}
             color="success"
             variant="outlined"
+            size="small"
           />
           <Chip
             icon={<Error />}
             label={`Invalid: ${invalidCount}`}
             color="error"
             variant="outlined"
+            size="small"
           />
-          <Chip label={`Total: ${receivers.length}`} variant="outlined" />
+          <Chip
+            label={`Total: ${receivers.length}`}
+            variant="outlined"
+            size="small"
+          />
         </Stack>
       </Box>
 
@@ -263,9 +273,10 @@ export const ReceiversTable: React.FC<ReceiversTableProps> = ({
         sx={{
           overflowX: 'auto',
           maxWidth: '100%',
+          maxHeight: { xs: 400, sm: 600 },
         }}
       >
-        <Table sx={{ minWidth: 1200 }}>
+        <Table sx={{ minWidth: { xs: 800, sm: 1200 } }}>
           <TableHead>
             <TableRow>
               <TableCell padding="checkbox" sx={{ width: 50 }}>
@@ -281,13 +292,63 @@ export const ReceiversTable: React.FC<ReceiversTableProps> = ({
                   onChange={handleSelectAll}
                 />
               </TableCell>
-              <TableCell sx={{ width: 60 }}>No</TableCell>
-              <TableCell sx={{ width: 80 }}>Status</TableCell>
-              <TableCell sx={{ width: 150 }}>Full Name</TableCell>
-              <TableCell sx={{ width: 200 }}>Email</TableCell>
-              <TableCell sx={{ width: 150 }}>Location</TableCell>
-              <TableCell sx={{ width: 180 }}>Timezone</TableCell>
-              <TableCell sx={{ width: 250, minWidth: 250 }}>
+              <TableCell
+                sx={{
+                  width: { xs: 40, sm: 60 },
+                  fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                }}
+              >
+                No
+              </TableCell>
+              <TableCell
+                sx={{
+                  width: { xs: 60, sm: 80 },
+                  fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                }}
+              >
+                Status
+              </TableCell>
+              <TableCell
+                sx={{
+                  width: { xs: 100, sm: 150 },
+                  fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                }}
+              >
+                Full Name
+              </TableCell>
+              <TableCell
+                sx={{
+                  width: { xs: 150, sm: 200 },
+                  fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                }}
+              >
+                Email
+              </TableCell>
+              <TableCell
+                sx={{
+                  width: { xs: 100, sm: 150 },
+                  fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                  display: { xs: 'none', md: 'table-cell' },
+                }}
+              >
+                Location
+              </TableCell>
+              <TableCell
+                sx={{
+                  width: { xs: 120, sm: 180 },
+                  fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                  display: { xs: 'none', lg: 'table-cell' },
+                }}
+              >
+                Timezone
+              </TableCell>
+              <TableCell
+                sx={{
+                  width: { xs: 150, sm: 250 },
+                  minWidth: { xs: 150, sm: 250 },
+                  fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                }}
+              >
                 <Tooltip title="Click to assign tags to all valid receivers">
                   <Button
                     onClick={handleColumnHeaderClick}
@@ -308,7 +369,14 @@ export const ReceiversTable: React.FC<ReceiversTableProps> = ({
                   </Button>
                 </Tooltip>
               </TableCell>
-              <TableCell sx={{ width: 80 }}>Actions</TableCell>
+              <TableCell
+                sx={{
+                  width: { xs: 60, sm: 80 },
+                  fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                }}
+              >
+                Actions
+              </TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -320,8 +388,10 @@ export const ReceiversTable: React.FC<ReceiversTableProps> = ({
                     onChange={() => handleSelectReceiver(receiver.id)}
                   />
                 </TableCell>
-                <TableCell>{receiver.rowNumber}</TableCell>
-                <TableCell>
+                <TableCell sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
+                  {receiver.rowNumber}
+                </TableCell>
+                <TableCell sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
                   <Tooltip
                     title={
                       receiver.isValid
@@ -336,7 +406,7 @@ export const ReceiversTable: React.FC<ReceiversTableProps> = ({
                     )}
                   </Tooltip>
                 </TableCell>
-                <TableCell>
+                <TableCell sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
                   <Typography variant="body2">{receiver.fullName}</Typography>
                   {!receiver.isValid && (
                     <Typography variant="caption" color="error">
@@ -344,13 +414,13 @@ export const ReceiversTable: React.FC<ReceiversTableProps> = ({
                     </Typography>
                   )}
                 </TableCell>
-                <TableCell>
+                <TableCell sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
                   <Box>
                     {receiver.emails.map((email, idx) => (
                       <Typography
                         key={idx}
                         variant="body2"
-                        sx={{ display: 'block' }}
+                        sx={{ display: 'block', fontSize: 'inherit' }}
                       >
                         {email}
                       </Typography>
@@ -362,12 +432,22 @@ export const ReceiversTable: React.FC<ReceiversTableProps> = ({
                     )}
                   </Box>
                 </TableCell>
-                <TableCell>
-                  <Typography variant="body2">
+                <TableCell
+                  sx={{
+                    fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                    display: { xs: 'none', md: 'table-cell' },
+                  }}
+                >
+                  <Typography variant="body2" sx={{ fontSize: 'inherit' }}>
                     {receiver.location || '-'}
                   </Typography>
                 </TableCell>
-                <TableCell>
+                <TableCell
+                  sx={{
+                    fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                    display: { xs: 'none', lg: 'table-cell' },
+                  }}
+                >
                   <Tooltip
                     title={
                       <Box>

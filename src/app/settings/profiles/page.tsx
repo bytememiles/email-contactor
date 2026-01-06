@@ -80,14 +80,28 @@ export default function ProfilesPage() {
 
   if (smtpConfigs.length === 0) {
     return (
-      <Box>
-        <Typography variant="h4" gutterBottom>
+      <Box sx={{ width: '100%', maxWidth: '100%', overflow: 'hidden' }}>
+        <Typography
+          variant="h4"
+          gutterBottom
+          sx={{ fontSize: { xs: '1.5rem', sm: '2rem' } }}
+        >
           Profiles
         </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+        <Typography
+          variant="body2"
+          color="text.secondary"
+          sx={{
+            mb: { xs: 2, sm: 3 },
+            fontSize: { xs: '0.875rem', sm: '1rem' },
+          }}
+        >
           Manage profiles with SMTP configurations and templates.
         </Typography>
-        <Alert severity="warning">
+        <Alert
+          severity="warning"
+          sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}
+        >
           You need to create at least one SMTP configuration before creating
           profiles. Go to{' '}
           <Button href="/settings/smtp" size="small" variant="outlined">
@@ -100,20 +114,30 @@ export default function ProfilesPage() {
   }
 
   return (
-    <Box>
+    <Box sx={{ width: '100%', maxWidth: '100%', overflow: 'hidden' }}>
       <Box
         sx={{
           display: 'flex',
-          alignItems: 'center',
+          flexDirection: { xs: 'column', sm: 'row' },
+          alignItems: { xs: 'flex-start', sm: 'center' },
           justifyContent: 'space-between',
-          mb: 3,
+          mb: { xs: 2, sm: 3 },
+          gap: { xs: 2, sm: 0 },
         }}
       >
-        <Box>
-          <Typography variant="h4" gutterBottom>
+        <Box sx={{ flex: 1 }}>
+          <Typography
+            variant="h4"
+            gutterBottom
+            sx={{ fontSize: { xs: '1.5rem', sm: '2rem' } }}
+          >
             Profiles
           </Typography>
-          <Typography variant="body2" color="text.secondary">
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}
+          >
             Manage profiles with SMTP configurations and templates.
           </Typography>
         </Box>
@@ -122,6 +146,8 @@ export default function ProfilesPage() {
           variant="contained"
           onClick={handleAdd}
           disabled={smtpConfigs.length === 0}
+          fullWidth={false}
+          sx={{ width: { xs: '100%', sm: 'auto' } }}
         >
           Add Profile
         </Button>
@@ -139,11 +165,23 @@ export default function ProfilesPage() {
         />
       )}
 
-      <Dialog open={showForm} onClose={handleCancel} maxWidth="md" fullWidth>
-        <DialogTitle>
+      <Dialog
+        open={showForm}
+        onClose={handleCancel}
+        maxWidth="md"
+        fullWidth
+        fullScreen={false}
+        PaperProps={{
+          sx: {
+            m: { xs: 1, sm: 2 },
+            maxHeight: { xs: '90vh', sm: 'auto' },
+          },
+        }}
+      >
+        <DialogTitle sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' } }}>
           {editingProfile ? 'Edit Profile' : 'Create Profile'}
         </DialogTitle>
-        <DialogContent>
+        <DialogContent sx={{ p: { xs: 2, sm: 3 } }}>
           <ProfileForm
             profile={editingProfile}
             smtpConfigs={smtpConfigs}
@@ -157,20 +195,43 @@ export default function ProfilesPage() {
       <Dialog
         open={showDeleteConfirm}
         onClose={() => setShowDeleteConfirm(false)}
+        PaperProps={{
+          sx: {
+            m: { xs: 1, sm: 2 },
+          },
+        }}
       >
-        <DialogTitle>Delete Profile?</DialogTitle>
-        <DialogContent>
-          <Typography>
+        <DialogTitle sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' } }}>
+          Delete Profile?
+        </DialogTitle>
+        <DialogContent sx={{ p: { xs: 2, sm: 3 } }}>
+          <Typography sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>
             Are you sure you want to delete this profile? This action cannot be
             undone.
           </Typography>
         </DialogContent>
-        <Box sx={{ p: 2, display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
-          <Button onClick={() => setShowDeleteConfirm(false)}>Cancel</Button>
+        <Box
+          sx={{
+            p: { xs: 2, sm: 3 },
+            display: 'flex',
+            flexDirection: { xs: 'column-reverse', sm: 'row' },
+            gap: 2,
+            justifyContent: 'flex-end',
+          }}
+        >
+          <Button
+            onClick={() => setShowDeleteConfirm(false)}
+            fullWidth={false}
+            sx={{ width: { xs: '100%', sm: 'auto' } }}
+          >
+            Cancel
+          </Button>
           <Button
             onClick={handleConfirmDelete}
             color="error"
             variant="contained"
+            fullWidth={false}
+            sx={{ width: { xs: '100%', sm: 'auto' } }}
           >
             Delete
           </Button>
