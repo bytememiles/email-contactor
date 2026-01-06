@@ -57,6 +57,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
+          px: { xs: 2, sm: 3, md: 4 },
+          pt: { xs: 2.5, sm: 3, md: 3.5 },
+          pb: { xs: 1.5, sm: 2, md: 2.5 },
         }}
       >
         SMTP Settings
@@ -92,7 +95,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           />
         </Tabs>
 
-        <Box sx={{ p: 3, minHeight: 400 }}>
+        <Box
+          sx={{
+            p: { xs: 2, sm: 3, md: 4 },
+            minHeight: 400,
+          }}
+        >
           {activeTab === 0 && <SMTPTab />}
           {activeTab === 1 && <BatchOperationsTab />}
           {activeTab === 2 && (
@@ -101,7 +109,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         </Box>
       </DialogContent>
 
-      <DialogActions>
+      <DialogActions
+        sx={{
+          px: { xs: 2, sm: 3, md: 4 },
+          py: { xs: 1.5, sm: 2, md: 2.5 },
+        }}
+      >
         <Button onClick={handleClose}>Close</Button>
       </DialogActions>
     </Dialog>

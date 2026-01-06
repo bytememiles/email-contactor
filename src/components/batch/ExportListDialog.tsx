@@ -50,8 +50,21 @@ export const ExportListDialog: React.FC<ExportListDialogProps> = ({
 
   return (
     <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
-      <DialogTitle>Export Receiver List</DialogTitle>
-      <DialogContent>
+      <DialogTitle
+        sx={{
+          px: { xs: 2, sm: 3, md: 4 },
+          pt: { xs: 2.5, sm: 3, md: 3.5 },
+          pb: { xs: 1.5, sm: 2, md: 2.5 },
+        }}
+      >
+        Export Receiver List
+      </DialogTitle>
+      <DialogContent
+        sx={{
+          px: { xs: 2, sm: 3, md: 4 },
+          py: { xs: 2, sm: 2.5, md: 3 },
+        }}
+      >
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           <Alert severity="info">
             <Typography variant="body2">
@@ -137,14 +150,19 @@ export const ExportListDialog: React.FC<ExportListDialogProps> = ({
               <li>Location</li>
               <li>Timezone</li>
               <li>Timezone Source</li>
-              <li>Tags (semicolon-separated)</li>
               <li>Validation Status</li>
               <li>Validation Errors</li>
             </Box>
           </Box>
         </Box>
       </DialogContent>
-      <DialogActions>
+      <DialogActions
+        sx={{
+          px: { xs: 2, sm: 3, md: 4 },
+          py: { xs: 1.5, sm: 2, md: 2.5 },
+          gap: { xs: 1, sm: 1.5 },
+        }}
+      >
         <Button onClick={handleClose} disabled={isExporting}>
           Cancel
         </Button>

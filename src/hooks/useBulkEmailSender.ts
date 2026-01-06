@@ -248,7 +248,6 @@ export const useBulkEmailSender = () => {
             const styledHtml = addEmailStyles(html);
 
             // Send email to all email addresses for this receiver
-            let receiverSent = false;
             for (const email of receiver.emails) {
               const success = await sendEmailWithRetry({
                 to: email,
@@ -260,7 +259,6 @@ export const useBulkEmailSender = () => {
 
               if (success) {
                 sentCount++;
-                receiverSent = true;
               } else {
                 failedCount++;
               }

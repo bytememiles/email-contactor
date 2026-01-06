@@ -32,12 +32,26 @@ export const ConfirmDeleteDialog: React.FC<ConfirmDeleteDialogProps> = ({
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+      <DialogTitle
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 1,
+          px: { xs: 2, sm: 3, md: 4 },
+          pt: { xs: 2.5, sm: 3, md: 3.5 },
+          pb: { xs: 1.5, sm: 2, md: 2.5 },
+        }}
+      >
         <Warning color="warning" />
         Confirm Delete
       </DialogTitle>
 
-      <DialogContent>
+      <DialogContent
+        sx={{
+          px: { xs: 2, sm: 3, md: 4 },
+          py: { xs: 2, sm: 2.5, md: 3 },
+        }}
+      >
         {list && (
           <Box>
             <Typography variant="body1" gutterBottom>
@@ -85,13 +99,19 @@ export const ConfirmDeleteDialog: React.FC<ConfirmDeleteDialogProps> = ({
 
             <Typography variant="body2" color="warning.main" sx={{ mt: 2 }}>
               <strong>Warning:</strong> This action cannot be undone. All
-              receiver data and tag assignments will be permanently lost.
+              receiver data will be permanently lost.
             </Typography>
           </Box>
         )}
       </DialogContent>
 
-      <DialogActions>
+      <DialogActions
+        sx={{
+          px: { xs: 2, sm: 3, md: 4 },
+          py: { xs: 1.5, sm: 2, md: 2.5 },
+          gap: { xs: 1, sm: 1.5 },
+        }}
+      >
         <Button onClick={onClose} variant="outlined">
           Cancel
         </Button>

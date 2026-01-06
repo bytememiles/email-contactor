@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
+  ArrowDropDown,
   Clear,
   CloudUpload,
   Download,
@@ -20,6 +21,8 @@ import {
   Dialog,
   DialogContent,
   DialogTitle,
+  Menu,
+  MenuItem,
   Snackbar,
   Stack,
   Step,
@@ -53,19 +56,8 @@ import { calculateSendTimes, getEarliestSendTime } from '@/utils/scheduling';
 
 export const BatchOperationsTab: React.FC = () => {
   const { showError, showWarning } = useNotification();
-  const {
-    receivers,
-    tags,
-    addTag,
-    updateTag,
-    deleteTag,
-    addTagToReceiver,
-    addTagToMultipleReceivers,
-    removeTagFromReceiver,
-    setAllReceivers,
-    deleteReceiver,
-    clearReceivers,
-  } = useReceivers();
+  const { receivers, setAllReceivers, deleteReceiver, clearReceivers } =
+    useReceivers();
 
   const {
     lists,
@@ -103,6 +95,10 @@ export const BatchOperationsTab: React.FC = () => {
   const [showExportDialog, setShowExportDialog] = useState(false);
   const [exportingListId, setExportingListId] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
+  const [saveMenuAnchor, setSaveMenuAnchor] = useState<null | HTMLElement>(
+    null
+  );
+  const [saveMode, setSaveMode] = useState<'save' | 'saveAsCopy'>('save');
 
   // Set default tab based on stored lists once they're loaded
   useEffect(() => {
@@ -153,11 +149,14 @@ export const BatchOperationsTab: React.FC = () => {
     clearCurrentList();
   };
 
-  const handleSaveList = (formData: { name: string; description?: string }) => {
+  const handleSaveList = (
+    formData: { name: string; description?: string },
+    saveMode: 'save' | 'saveAsCopy' = 'save'
+  ) => {
     if (receivers.length === 0) return;
 
     // Check if we're editing an existing list
-    if (editingListId) {
+    if (editingListId && saveMode === 'save') {
       // Update existing list
       updateReceiverList(editingListId, formData, receivers);
       setShowSaveDialog(false);
@@ -177,14 +176,15 @@ export const BatchOperationsTab: React.FC = () => {
         }, 1000);
       }
     } else {
-      // Create new list
+      // Create new list (either new list or save as copy)
       const newList = createReceiverList(formData, receivers, sourceFileName);
       setShowSaveDialog(false);
       setSavedListId(newList.id);
+      setEditingListId(null); // Clear editing state if it was set
 
       // Show success notification
       setSuccessMessage(
-        `List "${newList.name}" saved successfully with ${newList.validReceivers} valid receivers!`
+        `List "${newList.name}" ${saveMode === 'saveAsCopy' ? 'saved as copy' : 'saved'} successfully with ${newList.validReceivers} valid receivers!`
       );
       setShowSuccessMessage(true);
 
@@ -195,6 +195,14 @@ export const BatchOperationsTab: React.FC = () => {
         }, 1000);
       }
     }
+  };
+
+  const handleSaveMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
+    setSaveMenuAnchor(event.currentTarget);
+  };
+
+  const handleSaveMenuClose = () => {
+    setSaveMenuAnchor(null);
   };
 
   const handleCreateJob = (jobData: JobForm) => {
@@ -371,7 +379,7 @@ export const BatchOperationsTab: React.FC = () => {
       setShowSuccessMessage(true);
       setShowExportDialog(false);
       setExportingListId(null);
-    } catch (error) {
+    } catch {
       showError('Failed to export list');
     } finally {
       setIsExporting(false);
@@ -392,10 +400,10 @@ export const BatchOperationsTab: React.FC = () => {
     }
 
     const csvContent = [
-      'full name,emails,location,timezone,timezone_source,tags',
+      'full name,emails,location,timezone,timezone_source',
       ...validReceivers.map(
         (r) =>
-          `"${r.fullName}","${r.emails.join(';')}","${r.location}","${r.timezone}","${r.timezoneSource}","${r.tags.map((t) => t.name).join(';')}"`
+          `"${r.fullName}","${r.emails.join(';')}","${r.location}","${r.timezone}","${r.timezoneSource}"`
       ),
     ].join('\n');
 
@@ -408,6 +416,36 @@ export const BatchOperationsTab: React.FC = () => {
     URL.revokeObjectURL(url);
   };
 
+  const handleKeepSelectedOnly = (selectedIds: string[]) => {
+    if (selectedIds.length === 0) {
+      showWarning('No receivers selected');
+      return;
+    }
+    const selectedReceivers = receivers.filter((r) =>
+      selectedIds.includes(r.id)
+    );
+    setAllReceivers(selectedReceivers);
+    setSuccessMessage(
+      `Kept ${selectedReceivers.length} receiver(s), removed ${receivers.length - selectedReceivers.length} receiver(s)`
+    );
+    setShowSuccessMessage(true);
+  };
+
+  const handleRemoveSelected = (selectedIds: string[]) => {
+    if (selectedIds.length === 0) {
+      showWarning('No receivers selected');
+      return;
+    }
+    const remainingReceivers = receivers.filter(
+      (r) => !selectedIds.includes(r.id)
+    );
+    setAllReceivers(remainingReceivers);
+    setSuccessMessage(
+      `Removed ${selectedIds.length} receiver(s), ${remainingReceivers.length} receiver(s) remaining`
+    );
+    setShowSuccessMessage(true);
+  };
+
   const steps = [
     {
       label: 'Upload CSV',
@@ -417,19 +455,14 @@ export const BatchOperationsTab: React.FC = () => {
       ),
     },
     {
-      label: 'Review & Tag',
-      description: 'Review uploaded data, assign tags, and manage receivers',
+      label: 'Review & Manage',
+      description: 'Review uploaded data and manage receivers',
       content: (
         <ReceiversTable
           receivers={receivers}
-          tags={tags}
-          onAddTag={addTag}
-          onUpdateTag={updateTag}
-          onDeleteTag={deleteTag}
-          onAddTagToReceiver={addTagToReceiver}
-          onAddTagToMultipleReceivers={addTagToMultipleReceivers}
-          onRemoveTagFromReceiver={removeTagFromReceiver}
           onDeleteReceiver={deleteReceiver}
+          onKeepSelectedOnly={handleKeepSelectedOnly}
+          onRemoveSelected={handleRemoveSelected}
         />
       ),
     },
@@ -457,8 +490,8 @@ export const BatchOperationsTab: React.FC = () => {
           color="text.secondary"
           sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}
         >
-          Upload CSV files with receiver information, validate data, assign
-          tags, and manage recipients efficiently.
+          Upload CSV files with receiver information, validate data, and manage
+          recipients efficiently.
         </Typography>
       </Box>
 
@@ -538,16 +571,45 @@ export const BatchOperationsTab: React.FC = () => {
                   </Button>
                   {receivers.length > 0 && (
                     <>
-                      <Button
-                        startIcon={<Save />}
-                        onClick={() => setShowSaveDialog(true)}
-                        variant="contained"
-                        color="primary"
-                        fullWidth={false}
-                        sx={{ width: { xs: '100%', sm: 'auto' } }}
-                      >
-                        Save List
-                      </Button>
+                      <Box sx={{ position: 'relative' }}>
+                        <Button
+                          startIcon={<Save />}
+                          onClick={handleSaveMenuOpen}
+                          variant="contained"
+                          color="primary"
+                          fullWidth={false}
+                          endIcon={<ArrowDropDown />}
+                          sx={{ width: { xs: '100%', sm: 'auto' } }}
+                        >
+                          Save List
+                        </Button>
+                        <Menu
+                          anchorEl={saveMenuAnchor}
+                          open={Boolean(saveMenuAnchor)}
+                          onClose={handleSaveMenuClose}
+                        >
+                          <MenuItem
+                            onClick={() => {
+                              handleSaveMenuClose();
+                              setSaveMode('save');
+                              setShowSaveDialog(true);
+                            }}
+                          >
+                            <Save sx={{ mr: 1 }} />
+                            Save
+                          </MenuItem>
+                          <MenuItem
+                            onClick={() => {
+                              handleSaveMenuClose();
+                              setSaveMode('saveAsCopy');
+                              setShowSaveDialog(true);
+                            }}
+                          >
+                            <Save sx={{ mr: 1 }} />
+                            Save as Copy
+                          </MenuItem>
+                        </Menu>
+                      </Box>
                       {profiles.length > 0 && templates.length > 0 && (
                         <>
                           <Button
@@ -670,6 +732,7 @@ export const BatchOperationsTab: React.FC = () => {
             ? lists.find((l) => l.id === editingListId)?.description
             : undefined
         }
+        saveMode={saveMode}
       />
 
       {/* Success Notification */}
@@ -710,8 +773,21 @@ export const BatchOperationsTab: React.FC = () => {
         maxWidth="md"
         fullWidth
       >
-        <DialogTitle>Create Email Job</DialogTitle>
-        <DialogContent>
+        <DialogTitle
+          sx={{
+            px: { xs: 2, sm: 3, md: 4 },
+            pt: { xs: 2.5, sm: 3, md: 3.5 },
+            pb: { xs: 1.5, sm: 2, md: 2.5 },
+          }}
+        >
+          Create Email Job
+        </DialogTitle>
+        <DialogContent
+          sx={{
+            px: { xs: 2, sm: 3, md: 4 },
+            py: { xs: 2, sm: 2.5, md: 3 },
+          }}
+        >
           {savedListId && (
             <JobCreator
               profiles={profiles}

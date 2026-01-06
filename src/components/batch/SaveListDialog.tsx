@@ -15,13 +15,14 @@ import { ReceiverListForm } from '@/types/receiver';
 interface SaveListDialogProps {
   open: boolean;
   onClose: () => void;
-  onSave: (formData: ReceiverListForm) => void;
+  onSave: (formData: ReceiverListForm, saveMode: 'save' | 'saveAsCopy') => void;
   sourceFileName?: string;
   receiverCount: number;
   validCount: number;
   editingListId?: string | null;
   existingListName?: string;
   existingListDescription?: string;
+  saveMode?: 'save' | 'saveAsCopy';
 }
 
 export const SaveListDialog: React.FC<SaveListDialogProps> = ({
@@ -34,6 +35,7 @@ export const SaveListDialog: React.FC<SaveListDialogProps> = ({
   editingListId,
   existingListName,
   existingListDescription,
+  saveMode = 'save',
 }) => {
   const [formData, setFormData] = useState<ReceiverListForm>({
     name:
@@ -75,10 +77,13 @@ export const SaveListDialog: React.FC<SaveListDialogProps> = ({
   const handleSave = () => {
     if (!validateForm()) return;
 
-    onSave({
-      name: formData.name.trim(),
-      description: formData.description?.trim() || undefined,
-    });
+    onSave(
+      {
+        name: formData.name.trim(),
+        description: formData.description?.trim() || undefined,
+      },
+      saveMode
+    );
 
     // Reset form
     setFormData({
@@ -97,17 +102,35 @@ export const SaveListDialog: React.FC<SaveListDialogProps> = ({
   };
 
   const isEditing = !!editingListId;
+  const isSaveAsCopy = saveMode === 'saveAsCopy';
 
   return (
     <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
-      <DialogTitle>
-        {isEditing ? 'Update Receiver List' : 'Save Receiver List'}
+      <DialogTitle
+        sx={{
+          px: { xs: 2, sm: 3, md: 4 },
+          pt: { xs: 2.5, sm: 3, md: 3.5 },
+          pb: { xs: 1.5, sm: 2, md: 2.5 },
+        }}
+      >
+        {isEditing && !isSaveAsCopy
+          ? 'Update Receiver List'
+          : isSaveAsCopy
+            ? 'Save Receiver List (Copy)'
+            : 'Save Receiver List'}
       </DialogTitle>
-      <DialogContent>
+      <DialogContent
+        sx={{
+          px: { xs: 2, sm: 3, md: 4 },
+          py: { xs: 2, sm: 2.5, md: 3 },
+        }}
+      >
         <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-          {isEditing
+          {isEditing && !isSaveAsCopy
             ? 'Update the receiver list with your changes.'
-            : 'Save the processed and validated receiver data for future use.'}
+            : isSaveAsCopy
+              ? 'Save a copy of the receiver list with your changes.'
+              : 'Save the processed and validated receiver data for future use.'}
         </Typography>
 
         <Typography variant="body2" sx={{ mb: 2 }}>
@@ -149,7 +172,13 @@ export const SaveListDialog: React.FC<SaveListDialogProps> = ({
           inputProps={{ maxLength: 200 }}
         />
       </DialogContent>
-      <DialogActions>
+      <DialogActions
+        sx={{
+          px: { xs: 2, sm: 3, md: 4 },
+          py: { xs: 1.5, sm: 2, md: 2.5 },
+          gap: { xs: 1, sm: 1.5 },
+        }}
+      >
         <Button onClick={handleClose}>Cancel</Button>
         <Button
           onClick={handleSave}
@@ -157,7 +186,11 @@ export const SaveListDialog: React.FC<SaveListDialogProps> = ({
           startIcon={<Save />}
           disabled={!formData.name.trim()}
         >
-          {isEditing ? 'Update List' : 'Save List'}
+          {isEditing && !isSaveAsCopy
+            ? 'Update List'
+            : isSaveAsCopy
+              ? 'Save as Copy'
+              : 'Save List'}
         </Button>
       </DialogActions>
     </Dialog>

@@ -125,7 +125,15 @@ export const JobCreator: React.FC<JobCreatorProps> = ({
     : templates;
 
   return (
-    <Box component="form" onSubmit={handleSubmit}>
+    <Box
+      component="form"
+      onSubmit={handleSubmit}
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: { xs: 1.5, sm: 2 },
+      }}
+    >
       <FormControl
         fullWidth
         margin="normal"

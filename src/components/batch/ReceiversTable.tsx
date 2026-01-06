@@ -1,12 +1,12 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { CheckCircle, Delete, Error, ExpandMore } from '@mui/icons-material';
 import {
-  Alert,
   Box,
   Button,
   Checkbox,
   Chip,
   ClickAwayListener,
+  Divider,
   IconButton,
   MenuItem,
   MenuList,
@@ -20,51 +20,65 @@ import {
   TableHead,
   TablePagination,
   TableRow,
+  Toolbar,
   Tooltip,
   Typography,
 } from '@mui/material';
 
-import { ProcessedReceiver, ReceiverTag } from '@/types/receiver';
+import { ProcessedReceiver } from '@/types/receiver';
 import { formatTimezone } from '@/utils/csvUtils';
-
-import { InlineTagSelector } from './InlineTagSelector';
-import { TagManager } from './TagManager';
 
 interface ReceiversTableProps {
   receivers: ProcessedReceiver[];
-  tags: ReceiverTag[];
-  onAddTag: (tag: { name: string; color: string }) => void;
-  onUpdateTag: (id: string, tag: { name: string; color: string }) => void;
-  onDeleteTag: (id: string) => void;
-  onAddTagToReceiver: (receiverId: string, tagId: string) => void;
-  onAddTagToMultipleReceivers: (receiverIds: string[], tagId: string) => number;
-  onRemoveTagFromReceiver: (receiverId: string, tagId: string) => void;
   onDeleteReceiver: (id: string) => void;
-  onUpdateReceiver?: (id: string, updates: Partial<ProcessedReceiver>) => void;
+  onKeepSelectedOnly?: (selectedIds: string[]) => void;
+  onRemoveSelected?: (selectedIds: string[]) => void;
 }
 
 export const ReceiversTable: React.FC<ReceiversTableProps> = ({
   receivers,
-  tags,
-  onAddTag,
-  onUpdateTag,
-  onDeleteTag,
-  onAddTagToReceiver,
-  onAddTagToMultipleReceivers,
-  onRemoveTagFromReceiver,
   onDeleteReceiver,
+  onKeepSelectedOnly,
+  onRemoveSelected,
 }) => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [selectedReceivers, setSelectedReceivers] = useState<string[]>([]);
-  const [selectedTagForAssignment, setSelectedTagForAssignment] = useState<
-    string[]
-  >([]);
-  const [globalAssignmentMessage, setGlobalAssignmentMessage] =
-    useState<string>('');
-  const [columnHeaderAnchorEl, setColumnHeaderAnchorEl] =
+  const [timezoneFilterAnchorEl, setTimezoneFilterAnchorEl] =
     useState<HTMLElement | null>(null);
-  const [showColumnTagMenu, setShowColumnTagMenu] = useState(false);
+  const [showTimezoneFilter, setShowTimezoneFilter] = useState(false);
+  const [selectedTimezones, setSelectedTimezones] = useState<string[]>([]);
+  const [stateFilterAnchorEl, setStateFilterAnchorEl] =
+    useState<HTMLElement | null>(null);
+  const [showStateFilter, setShowStateFilter] = useState(false);
+  const [selectedStates, setSelectedStates] = useState<string[]>([]);
+
+  // Get unique timezones from receivers
+  const uniqueTimezones = useMemo(() => {
+    return [...new Set(receivers.map((r) => r.timezone))].sort();
+  }, [receivers]);
+
+  // Get unique states from receivers
+  const uniqueStates = useMemo(() => {
+    return [...new Set(receivers.map((r) => r.state).filter(Boolean))].sort();
+  }, [receivers]);
+
+  // Filter receivers by selected timezones and states
+  const filteredReceivers = useMemo(() => {
+    let filtered = receivers;
+
+    if (selectedTimezones.length > 0) {
+      filtered = filtered.filter((r) => selectedTimezones.includes(r.timezone));
+    }
+
+    if (selectedStates.length > 0) {
+      filtered = filtered.filter(
+        (r) => r.state && selectedStates.includes(r.state)
+      );
+    }
+
+    return filtered;
+  }, [receivers, selectedTimezones, selectedStates]);
 
   const handleSelectReceiver = (receiverId: string) => {
     setSelectedReceivers((prev) =>
@@ -75,117 +89,123 @@ export const ReceiversTable: React.FC<ReceiversTableProps> = ({
   };
 
   const handleSelectAll = () => {
-    const currentPageReceivers = receivers.slice(
-      page * rowsPerPage,
-      page * rowsPerPage + rowsPerPage
+    // Check if all filtered receivers are selected
+    const allFilteredIds = filteredReceivers.map((r) => r.id);
+    const allSelected = allFilteredIds.every((id) =>
+      selectedReceivers.includes(id)
     );
 
-    if (selectedReceivers.length === currentPageReceivers.length) {
+    if (allSelected) {
+      // Deselect all filtered receivers
+      setSelectedReceivers((prev) =>
+        prev.filter((id) => !allFilteredIds.includes(id))
+      );
+    } else {
+      // Select all filtered receivers
+      setSelectedReceivers((prev) => [
+        ...new Set([...prev, ...allFilteredIds]),
+      ]);
+    }
+  };
+
+  const handleKeepSelectedOnly = () => {
+    if (onKeepSelectedOnly && selectedReceivers.length > 0) {
+      onKeepSelectedOnly(selectedReceivers);
       setSelectedReceivers([]);
-    } else {
-      setSelectedReceivers(currentPageReceivers.map((r) => r.id));
     }
   };
 
-  const handleTagSelect = (tagId: string) => {
-    setSelectedTagForAssignment((prev) =>
-      prev.includes(tagId)
-        ? prev.filter((id) => id !== tagId)
-        : [...prev, tagId]
-    );
-  };
-
-  const handleTagDeselect = (tagId: string) => {
-    setSelectedTagForAssignment((prev) => prev.filter((id) => id !== tagId));
-  };
-
-  const handleAssignSelectedTags = () => {
-    selectedReceivers.forEach((receiverId) => {
-      selectedTagForAssignment.forEach((tagId) => {
-        onAddTagToReceiver(receiverId, tagId);
-      });
-    });
-    setSelectedTagForAssignment([]);
-    setSelectedReceivers([]);
-  };
-
-  const handleGlobalTagAssign = (tagId: string) => {
-    const tag = tags.find((t) => t.id === tagId);
-    if (!tag) return;
-
-    // Get all valid receivers that don't already have this tag
-    const validReceivers = receivers.filter(
-      (r) => r.isValid && !r.tags.some((tag) => tag.id === tagId)
-    );
-    const receiverIds = validReceivers.map((r) => r.id);
-
-    // Use bulk assignment method
-    const assignedCount = onAddTagToMultipleReceivers(receiverIds, tagId);
-
-    // Show feedback message
-    if (assignedCount > 0) {
-      setGlobalAssignmentMessage(
-        `Tag "${tag.name}" assigned to ${assignedCount} valid receiver(s)`
-      );
-      setTimeout(() => setGlobalAssignmentMessage(''), 3000);
-    } else {
-      setGlobalAssignmentMessage(
-        `All valid receivers already have the "${tag.name}" tag`
-      );
-      setTimeout(() => setGlobalAssignmentMessage(''), 3000);
+  const handleRemoveSelected = () => {
+    if (onRemoveSelected && selectedReceivers.length > 0) {
+      onRemoveSelected(selectedReceivers);
+      setSelectedReceivers([]);
     }
   };
 
-  const handleRemoveTagFromReceiver = (receiverId: string, tagId: string) => {
-    onRemoveTagFromReceiver(receiverId, tagId);
+  const handleTimezoneFilterClick = (event: React.MouseEvent<HTMLElement>) => {
+    setTimezoneFilterAnchorEl(event.currentTarget);
+    setShowTimezoneFilter(true);
   };
 
-  const handleColumnHeaderClick = (event: React.MouseEvent<HTMLElement>) => {
-    setColumnHeaderAnchorEl(event.currentTarget);
-    setShowColumnTagMenu(true);
+  const handleTimezoneFilterClose = () => {
+    setTimezoneFilterAnchorEl(null);
+    setShowTimezoneFilter(false);
   };
 
-  const handleColumnMenuClose = () => {
-    setColumnHeaderAnchorEl(null);
-    setShowColumnTagMenu(false);
-  };
-
-  const handleColumnTagAssign = (tagId: string) => {
-    const tag = tags.find((t) => t.id === tagId);
-    if (!tag) return;
-
-    // Get all valid receivers that don't already have this tag
-    const validReceivers = receivers.filter(
-      (r) => r.isValid && !r.tags.some((tag) => tag.id === tagId)
+  const handleTimezoneToggle = (timezone: string) => {
+    setSelectedTimezones((prev) =>
+      prev.includes(timezone)
+        ? prev.filter((tz) => tz !== timezone)
+        : [...prev, timezone]
     );
-    const receiverIds = validReceivers.map((r) => r.id);
-
-    // Use bulk assignment method
-    const assignedCount = onAddTagToMultipleReceivers(receiverIds, tagId);
-
-    // Show feedback message
-    if (assignedCount > 0) {
-      setGlobalAssignmentMessage(
-        `Tag "${tag.name}" assigned to ${assignedCount} valid receiver(s)`
-      );
-      setTimeout(() => setGlobalAssignmentMessage(''), 3000);
-    } else {
-      setGlobalAssignmentMessage(
-        `All valid receivers already have the "${tag.name}" tag`
-      );
-      setTimeout(() => setGlobalAssignmentMessage(''), 3000);
-    }
-
-    handleColumnMenuClose();
   };
 
-  const validCount = receivers.filter((r) => r.isValid).length;
-  const invalidCount = receivers.length - validCount;
+  const handleSelectAllTimezones = () => {
+    if (selectedTimezones.length === uniqueTimezones.length) {
+      setSelectedTimezones([]);
+    } else {
+      setSelectedTimezones([...uniqueTimezones]);
+    }
+  };
 
-  const currentPageReceivers = receivers.slice(
+  const handleStateFilterClick = (event: React.MouseEvent<HTMLElement>) => {
+    setStateFilterAnchorEl(event.currentTarget);
+    setShowStateFilter(true);
+  };
+
+  const handleStateFilterClose = () => {
+    setStateFilterAnchorEl(null);
+    setShowStateFilter(false);
+  };
+
+  const handleStateToggle = (state: string) => {
+    setSelectedStates((prev) =>
+      prev.includes(state) ? prev.filter((s) => s !== state) : [...prev, state]
+    );
+  };
+
+  const handleSelectAllStates = () => {
+    if (selectedStates.length === uniqueStates.length) {
+      setSelectedStates([]);
+    } else {
+      setSelectedStates([...uniqueStates]);
+    }
+  };
+
+  // Get count of receivers per state
+  const getStateCount = (state: string) => {
+    return receivers.filter((r) => r.state === state).length;
+  };
+
+  // Check if all filtered receivers are selected
+  const allFilteredSelected = useMemo(() => {
+    if (filteredReceivers.length === 0) return false;
+    const allFilteredIds = filteredReceivers.map((r) => r.id);
+    return allFilteredIds.every((id) => selectedReceivers.includes(id));
+  }, [filteredReceivers, selectedReceivers]);
+
+  // Check if some (but not all) filtered receivers are selected
+  const someFilteredSelected = useMemo(() => {
+    if (filteredReceivers.length === 0) return false;
+    const allFilteredIds = filteredReceivers.map((r) => r.id);
+    const selectedCount = allFilteredIds.filter((id) =>
+      selectedReceivers.includes(id)
+    ).length;
+    return selectedCount > 0 && selectedCount < allFilteredIds.length;
+  }, [filteredReceivers, selectedReceivers]);
+
+  const validCount = filteredReceivers.filter((r) => r.isValid).length;
+  const invalidCount = filteredReceivers.length - validCount;
+
+  const currentPageReceivers = filteredReceivers.slice(
     page * rowsPerPage,
     page * rowsPerPage + rowsPerPage
   );
+
+  // Get count of receivers per timezone
+  const getTimezoneCount = (timezone: string) => {
+    return receivers.filter((r) => r.timezone === timezone).length;
+  };
 
   return (
     <Box>
@@ -214,58 +234,66 @@ export const ReceiversTable: React.FC<ReceiversTableProps> = ({
             size="small"
           />
           <Chip
-            label={`Total: ${receivers.length}`}
+            label={`Total: ${filteredReceivers.length}`}
             variant="outlined"
             size="small"
           />
+          {selectedTimezones.length > 0 && (
+            <Chip
+              label={`Filtered: ${selectedTimezones.length} timezone(s)`}
+              color="info"
+              variant="outlined"
+              size="small"
+              onDelete={() => setSelectedTimezones([])}
+            />
+          )}
+          {selectedStates.length > 0 && (
+            <Chip
+              label={`Filtered: ${selectedStates.length} state(s)`}
+              color="info"
+              variant="outlined"
+              size="small"
+              onDelete={() => setSelectedStates([])}
+            />
+          )}
         </Stack>
       </Box>
 
-      {/* Tag Management */}
-      <Box sx={{ mb: 3, p: 2, border: '1px solid #e0e0e0', borderRadius: 1 }}>
-        <TagManager
-          tags={tags}
-          onAddTag={onAddTag}
-          onUpdateTag={onUpdateTag}
-          onDeleteTag={onDeleteTag}
-          selectedTags={selectedTagForAssignment}
-          onTagSelect={handleTagSelect}
-          onTagDeselect={handleTagDeselect}
-          onGlobalTagAssign={handleGlobalTagAssign}
-          showGlobalAssignment={true}
-        />
-
-        {globalAssignmentMessage && (
-          <Box sx={{ mt: 2 }}>
-            <Alert severity="success" sx={{ mb: 2 }}>
-              {globalAssignmentMessage}
-            </Alert>
-          </Box>
-        )}
-
-        {selectedReceivers.length > 0 &&
-          selectedTagForAssignment.length > 0 && (
-            <Box sx={{ mt: 2 }}>
-              <Alert
-                severity="info"
-                action={
-                  <Box sx={{ display: 'flex', gap: 1 }}>
-                    <Chip
-                      label={`Assign to ${selectedReceivers.length} receiver(s)`}
-                      onClick={handleAssignSelectedTags}
-                      color="primary"
-                      clickable
-                      size="small"
-                    />
-                  </Box>
-                }
+      {/* Selection Toolbar */}
+      {selectedReceivers.length > 0 && (
+        <Paper sx={{ mb: 2, p: 1 }}>
+          <Toolbar
+            variant="dense"
+            sx={{
+              minHeight: '48px !important',
+              justifyContent: 'space-between',
+            }}
+          >
+            <Typography variant="body2" color="text.secondary">
+              {selectedReceivers.length} receiver(s) selected
+            </Typography>
+            <Stack direction="row" spacing={1}>
+              <Button
+                size="small"
+                variant="outlined"
+                onClick={handleKeepSelectedOnly}
+                disabled={!onKeepSelectedOnly}
               >
-                {selectedTagForAssignment.length} tag(s) selected,{' '}
-                {selectedReceivers.length} receiver(s) selected
-              </Alert>
-            </Box>
-          )}
-      </Box>
+                Keep Selected Only
+              </Button>
+              <Button
+                size="small"
+                variant="outlined"
+                color="error"
+                onClick={handleRemoveSelected}
+                disabled={!onRemoveSelected}
+              >
+                Remove Selected
+              </Button>
+            </Stack>
+          </Toolbar>
+        </Paper>
+      )}
 
       {/* Table */}
       <TableContainer
@@ -281,14 +309,8 @@ export const ReceiversTable: React.FC<ReceiversTableProps> = ({
             <TableRow>
               <TableCell padding="checkbox" sx={{ width: 50 }}>
                 <Checkbox
-                  indeterminate={
-                    selectedReceivers.length > 0 &&
-                    selectedReceivers.length < currentPageReceivers.length
-                  }
-                  checked={
-                    currentPageReceivers.length > 0 &&
-                    selectedReceivers.length === currentPageReceivers.length
-                  }
+                  indeterminate={someFilteredSelected}
+                  checked={allFilteredSelected && filteredReceivers.length > 0}
                   onChange={handleSelectAll}
                 />
               </TableCell>
@@ -331,27 +353,9 @@ export const ReceiversTable: React.FC<ReceiversTableProps> = ({
                   display: { xs: 'none', md: 'table-cell' },
                 }}
               >
-                Location
-              </TableCell>
-              <TableCell
-                sx={{
-                  width: { xs: 120, sm: 180 },
-                  fontSize: { xs: '0.75rem', sm: '0.875rem' },
-                  display: { xs: 'none', lg: 'table-cell' },
-                }}
-              >
-                Timezone
-              </TableCell>
-              <TableCell
-                sx={{
-                  width: { xs: 150, sm: 250 },
-                  minWidth: { xs: 150, sm: 250 },
-                  fontSize: { xs: '0.75rem', sm: '0.875rem' },
-                }}
-              >
-                <Tooltip title="Click to assign tags to all valid receivers">
+                <Tooltip title="Click to filter by state">
                   <Button
-                    onClick={handleColumnHeaderClick}
+                    onClick={handleStateFilterClick}
                     endIcon={<ExpandMore />}
                     sx={{
                       textTransform: 'none',
@@ -365,7 +369,48 @@ export const ReceiversTable: React.FC<ReceiversTableProps> = ({
                       },
                     }}
                   >
-                    Tags
+                    State
+                    {selectedStates.length > 0 && (
+                      <Chip
+                        label={selectedStates.length}
+                        size="small"
+                        sx={{ ml: 1, height: 20, fontSize: '0.7rem' }}
+                      />
+                    )}
+                  </Button>
+                </Tooltip>
+              </TableCell>
+              <TableCell
+                sx={{
+                  width: { xs: 120, sm: 180 },
+                  fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                  display: { xs: 'none', lg: 'table-cell' },
+                }}
+              >
+                <Tooltip title="Click to filter by timezone">
+                  <Button
+                    onClick={handleTimezoneFilterClick}
+                    endIcon={<ExpandMore />}
+                    sx={{
+                      textTransform: 'none',
+                      color: 'text.primary',
+                      fontWeight: 'normal',
+                      justifyContent: 'flex-start',
+                      minWidth: 'auto',
+                      padding: '4px 8px',
+                      '&:hover': {
+                        backgroundColor: 'action.hover',
+                      },
+                    }}
+                  >
+                    Timezone
+                    {selectedTimezones.length > 0 && (
+                      <Chip
+                        label={selectedTimezones.length}
+                        size="small"
+                        sx={{ ml: 1, height: 20, fontSize: '0.7rem' }}
+                      />
+                    )}
                   </Button>
                 </Tooltip>
               </TableCell>
@@ -439,7 +484,7 @@ export const ReceiversTable: React.FC<ReceiversTableProps> = ({
                   }}
                 >
                   <Typography variant="body2" sx={{ fontSize: 'inherit' }}>
-                    {receiver.location || '-'}
+                    {receiver.state || '-'}
                   </Typography>
                 </TableCell>
                 <TableCell
@@ -488,15 +533,6 @@ export const ReceiversTable: React.FC<ReceiversTableProps> = ({
                   </Tooltip>
                 </TableCell>
                 <TableCell>
-                  <InlineTagSelector
-                    receiverId={receiver.id}
-                    assignedTags={receiver.tags}
-                    availableTags={tags}
-                    onAddTag={onAddTagToReceiver}
-                    onRemoveTag={handleRemoveTagFromReceiver}
-                  />
-                </TableCell>
-                <TableCell>
                   <Tooltip title="Delete receiver">
                     <IconButton
                       size="small"
@@ -516,7 +552,7 @@ export const ReceiversTable: React.FC<ReceiversTableProps> = ({
       <TablePagination
         rowsPerPageOptions={[5, 10, 25, 50]}
         component="div"
-        count={receivers.length}
+        count={filteredReceivers.length}
         rowsPerPage={rowsPerPage}
         page={page}
         onPageChange={(_, newPage) => setPage(newPage)}
@@ -526,65 +562,153 @@ export const ReceiversTable: React.FC<ReceiversTableProps> = ({
         }}
       />
 
-      {/* Column Header Tag Menu */}
+      {/* Timezone Filter Dropdown */}
       <Popper
-        open={showColumnTagMenu}
-        anchorEl={columnHeaderAnchorEl}
+        open={showTimezoneFilter}
+        anchorEl={timezoneFilterAnchorEl}
         placement="bottom-start"
         style={{ zIndex: 1300 }}
       >
-        <ClickAwayListener onClickAway={handleColumnMenuClose}>
+        <ClickAwayListener onClickAway={handleTimezoneFilterClose}>
           <Paper
-            sx={{ mt: 1, minWidth: 200, maxHeight: 300, overflow: 'auto' }}
+            sx={{ mt: 1, minWidth: 300, maxHeight: 400, overflow: 'auto' }}
           >
             <Box
               sx={{ p: 2, borderBottom: '1px solid', borderColor: 'divider' }}
             >
               <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-                Assign Tag to All Valid Receivers
+                Filter by Timezone
               </Typography>
               <Typography variant="caption" color="text.secondary">
-                Click a tag to apply it to all{' '}
-                {receivers.filter((r) => r.isValid).length} valid receivers
+                Select timezones to filter receivers
               </Typography>
             </Box>
+            <Box sx={{ p: 1 }}>
+              <MenuItem
+                onClick={handleSelectAllTimezones}
+                dense
+                sx={{ fontWeight: 500 }}
+              >
+                <Checkbox
+                  checked={selectedTimezones.length === uniqueTimezones.length}
+                  indeterminate={
+                    selectedTimezones.length > 0 &&
+                    selectedTimezones.length < uniqueTimezones.length
+                  }
+                />
+                <Typography variant="body2">
+                  {selectedTimezones.length === uniqueTimezones.length
+                    ? 'Deselect All'
+                    : 'Select All'}
+                </Typography>
+              </MenuItem>
+              <Divider />
+            </Box>
             <MenuList dense>
-              {tags.map((tag) => (
-                <MenuItem
-                  key={tag.id}
-                  onClick={() => handleColumnTagAssign(tag.id)}
-                  sx={{
-                    gap: 1,
-                    '&:hover': {
-                      backgroundColor: `${tag.color}20`,
-                    },
-                  }}
-                >
-                  <Box
-                    sx={{
-                      width: 16,
-                      height: 16,
-                      backgroundColor: tag.color,
-                      borderRadius: '50%',
-                      flexShrink: 0,
-                    }}
-                  />
-                  <Typography variant="body2">{tag.name}</Typography>
-                  <Box sx={{ flex: 1 }} />
-                  <Typography variant="caption" color="text.secondary">
-                    {
-                      receivers.filter(
-                        (r) => r.isValid && !r.tags.some((t) => t.id === tag.id)
-                      ).length
-                    }{' '}
-                    new
-                  </Typography>
-                </MenuItem>
-              ))}
-              {tags.length === 0 && (
+              {uniqueTimezones.map((timezone) => {
+                const count = getTimezoneCount(timezone);
+                return (
+                  <MenuItem
+                    key={timezone}
+                    onClick={() => handleTimezoneToggle(timezone)}
+                    sx={{ gap: 1 }}
+                  >
+                    <Checkbox checked={selectedTimezones.includes(timezone)} />
+                    <Box sx={{ flex: 1 }}>
+                      <Typography variant="body2">{timezone}</Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {formatTimezone(timezone)}
+                      </Typography>
+                    </Box>
+                    <Chip
+                      label={count}
+                      size="small"
+                      variant="outlined"
+                      sx={{ fontSize: '0.7rem' }}
+                    />
+                  </MenuItem>
+                );
+              })}
+              {uniqueTimezones.length === 0 && (
                 <MenuItem disabled>
                   <Typography variant="body2" color="text.secondary">
-                    No tags available
+                    No timezones available
+                  </Typography>
+                </MenuItem>
+              )}
+            </MenuList>
+          </Paper>
+        </ClickAwayListener>
+      </Popper>
+
+      {/* State Filter Dropdown */}
+      <Popper
+        open={showStateFilter}
+        anchorEl={stateFilterAnchorEl}
+        placement="bottom-start"
+        style={{ zIndex: 1300 }}
+      >
+        <ClickAwayListener onClickAway={handleStateFilterClose}>
+          <Paper
+            sx={{ mt: 1, minWidth: 300, maxHeight: 400, overflow: 'auto' }}
+          >
+            <Box
+              sx={{ p: 2, borderBottom: '1px solid', borderColor: 'divider' }}
+            >
+              <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                Filter by State
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                Select states to filter receivers
+              </Typography>
+            </Box>
+            <Box sx={{ p: 1 }}>
+              <MenuItem
+                onClick={handleSelectAllStates}
+                dense
+                sx={{ fontWeight: 500 }}
+              >
+                <Checkbox
+                  checked={selectedStates.length === uniqueStates.length}
+                  indeterminate={
+                    selectedStates.length > 0 &&
+                    selectedStates.length < uniqueStates.length
+                  }
+                />
+                <Typography variant="body2">
+                  {selectedStates.length === uniqueStates.length
+                    ? 'Deselect All'
+                    : 'Select All'}
+                </Typography>
+              </MenuItem>
+              <Divider />
+            </Box>
+            <MenuList dense>
+              {uniqueStates.map((state) => {
+                const count = getStateCount(state);
+                return (
+                  <MenuItem
+                    key={state}
+                    onClick={() => handleStateToggle(state)}
+                    sx={{ gap: 1 }}
+                  >
+                    <Checkbox checked={selectedStates.includes(state)} />
+                    <Box sx={{ flex: 1 }}>
+                      <Typography variant="body2">{state}</Typography>
+                    </Box>
+                    <Chip
+                      label={count}
+                      size="small"
+                      variant="outlined"
+                      sx={{ fontSize: '0.7rem' }}
+                    />
+                  </MenuItem>
+                );
+              })}
+              {uniqueStates.length === 0 && (
+                <MenuItem disabled>
+                  <Typography variant="body2" color="text.secondary">
+                    No states available
                   </Typography>
                 </MenuItem>
               )}

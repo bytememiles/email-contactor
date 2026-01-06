@@ -50,7 +50,6 @@ export const BulkSendDialog: React.FC<BulkSendDialogProps> = ({
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
 
   const validReceivers = receivers.filter((r) => r.isValid);
-  const selectedProfile = profiles.find((p) => p.id === selectedProfileId);
   const selectedTemplate = templates.find((t) => t.id === selectedTemplateId);
 
   const canSend =
@@ -79,10 +78,21 @@ export const BulkSendDialog: React.FC<BulkSendDialogProps> = ({
 
   return (
     <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
-      <DialogTitle>
+      <DialogTitle
+        sx={{
+          px: { xs: 2, sm: 3, md: 4 },
+          pt: { xs: 2.5, sm: 3, md: 3.5 },
+          pb: { xs: 1.5, sm: 2, md: 2.5 },
+        }}
+      >
         {isSending ? 'Sending Bulk Emails' : 'Send Bulk Emails Now'}
       </DialogTitle>
-      <DialogContent>
+      <DialogContent
+        sx={{
+          px: { xs: 2, sm: 3, md: 4 },
+          py: { xs: 2, sm: 2.5, md: 3 },
+        }}
+      >
         {isSending && progress ? (
           <Box>
             <Typography variant="body1" gutterBottom>
@@ -211,7 +221,13 @@ export const BulkSendDialog: React.FC<BulkSendDialogProps> = ({
           </Box>
         )}
       </DialogContent>
-      <DialogActions>
+      <DialogActions
+        sx={{
+          px: { xs: 2, sm: 3, md: 4 },
+          py: { xs: 1.5, sm: 2, md: 2.5 },
+          gap: { xs: 1, sm: 1.5 },
+        }}
+      >
         {isSending ? (
           <Box
             sx={{
