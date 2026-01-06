@@ -114,3 +114,62 @@ export function getEarliestSendTime(
   if (scheduledTimes.length === 0) return null;
   return scheduledTimes[0].sendTime;
 }
+
+/**
+ * Check if it's time to send to a receiver based on their timezone and target send time
+ * @param receiverTimezone The receiver's timezone (e.g., "America/New_York")
+ * @param sendTime The target send time in HH:mm format (e.g., "10:00")
+ * @param now Optional current time (defaults to new Date())
+ * @returns true if it's time to send (at or past target time on the same day), false otherwise
+ */
+export function isTimeToSend(
+  receiverTimezone: string,
+  sendTime: string,
+  now: Date = new Date()
+): boolean {
+  try {
+    // Parse send time (HH:mm format)
+    const [targetHour, targetMinute] = sendTime.split(':').map(Number);
+
+    if (isNaN(targetHour) || isNaN(targetMinute)) {
+      console.warn(`Invalid sendTime format: ${sendTime}`);
+      return false;
+    }
+
+    // Get current time in the receiver's timezone
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: receiverTimezone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    });
+
+    const parts = formatter.formatToParts(now);
+    const currentHour = parseInt(
+      parts.find((p) => p.type === 'hour')?.value || '0'
+    );
+    const currentMinute = parseInt(
+      parts.find((p) => p.type === 'minute')?.value || '0'
+    );
+
+    // Calculate total minutes for comparison
+    const targetTotalMinutes = targetHour * 60 + targetMinute;
+    const currentTotalMinutes = currentHour * 60 + currentMinute;
+
+    // Check if current time is at or past target time on the same day
+    // We send if we're at or past the target time (allows for polling delays)
+    // The job's scheduledTime ensures we only start checking when at least one receiver's time has arrived
+    const isTimeToSend = currentTotalMinutes >= targetTotalMinutes;
+
+    return isTimeToSend;
+  } catch (error) {
+    console.error(
+      `Error checking send time for timezone ${receiverTimezone}:`,
+      error
+    );
+    return false;
+  }
+}

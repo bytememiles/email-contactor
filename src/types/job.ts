@@ -19,10 +19,12 @@ export interface EmailJob {
   templateId: string;
   receiverListId: string;
   status: JobStatus;
-  scheduledTime: Date; // Calculated based on recipient timezones
+  scheduledTime: Date; // Earliest send time (for job activation)
+  sendTime?: string; // Target send time in HH:mm format (e.g., "10:00") - used for timezone-aware sending
   sentCount: number;
   failedCount: number;
   totalCount: number;
+  sentReceiverIds?: string[]; // Track which receiver IDs have been sent to (for timezone-aware jobs)
   createdAt: Date;
   updatedAt: Date;
   error?: string; // Main error message (for backward compatibility)

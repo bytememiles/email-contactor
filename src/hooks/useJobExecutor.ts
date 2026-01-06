@@ -8,6 +8,7 @@ import { EmailJob, JobStatus } from '@/types/job';
 import { ProcessedReceiver } from '@/types/receiver';
 import { SMTPConfig } from '@/types/smtp';
 import { EmailTemplate } from '@/types/template';
+import { isTimeToSend } from '@/utils/scheduling';
 
 // Type for the debug API exposed on window
 interface JobExecutorDebugAPI {
@@ -33,7 +34,8 @@ interface JobExecutorDependencies {
   updateJobProgress: (
     id: string,
     sentCount: number,
-    failedCount: number
+    failedCount: number,
+    sentReceiverIds?: string[]
   ) => void;
   addJobError: (
     id: string,
@@ -317,9 +319,54 @@ async function executeJob(
     // Process emails one by one
     let sentCount = 0;
     let failedCount = 0;
+    let skippedCount = 0;
+
+    // Get target send time from job (default to "10:00" if not specified)
+    const targetSendTime = job.sendTime || '10:00';
+
+    // Track which receivers have already been sent to (for timezone-aware jobs)
+    const sentReceiverIds = new Set(job.sentReceiverIds || []);
 
     for (const receiver of validReceivers) {
       try {
+        // Skip if already sent to (for timezone-aware jobs that process over time)
+        if (job.sendTime && sentReceiverIds.has(receiver.id)) {
+          console.log(
+            `[JobExecutor] Skipping receiver ${receiver.id} - already sent to`
+          );
+          continue;
+        }
+
+        // Check if it's time to send to this receiver based on their timezone
+        // Only check if the job has a sendTime specified (timezone-aware mode)
+        if (job.sendTime && receiver.timezone) {
+          const now = new Date();
+          const shouldSend = isTimeToSend(
+            receiver.timezone,
+            targetSendTime,
+            now
+          );
+
+          if (!shouldSend) {
+            // Get current time in receiver's timezone for logging
+            const formatter = new Intl.DateTimeFormat('en-US', {
+              timeZone: receiver.timezone,
+              hour: '2-digit',
+              minute: '2-digit',
+              hour12: false,
+            });
+            const receiverLocalTime = formatter.format(now);
+
+            skippedCount++;
+            console.log(
+              `[JobExecutor] Skipping receiver ${receiver.id} (${receiver.emails.join(', ')}) - ` +
+                `Current time in ${receiver.timezone}: ${receiverLocalTime}, ` +
+                `Target time: ${targetSendTime}`
+            );
+            continue; // Skip this receiver for now, will be checked again in next poll
+          }
+        }
+
         // Replace placeholders in template content and subject
         const personalizedContent = replacePlaceholders(
           template.content,
@@ -336,10 +383,13 @@ async function executeJob(
         const { html, text } = convertMarkdownToEmail(personalizedContent);
         const styledHtml = addEmailStyles(html);
 
+        // Track if any email was successfully sent for this receiver
+        let receiverSent = false;
+
         // Send email to all email addresses for this receiver
         for (const email of receiver.emails) {
           console.log(
-            `[JobExecutor] Sending email to ${email} (receiver: ${receiver.id})`
+            `[JobExecutor] Sending email to ${email} (receiver: ${receiver.id}, timezone: ${receiver.timezone || 'N/A'})`
           );
           const success = await sendEmailWithRetry({
             to: email,
@@ -351,6 +401,7 @@ async function executeJob(
 
           if (success) {
             sentCount++;
+            receiverSent = true;
             console.log(`[JobExecutor] ✓ Email sent successfully to ${email}`);
           } else {
             failedCount++;
@@ -360,7 +411,12 @@ async function executeJob(
           }
 
           // Update progress after each email (for better real-time feedback)
-          updateJobProgress(job.id, sentCount, failedCount);
+          updateJobProgress(
+            job.id,
+            sentCount,
+            failedCount,
+            Array.from(sentReceiverIds)
+          );
 
           // Rate limiting delay between emails to avoid overwhelming SMTP server
           // Use exponential backoff if we're seeing failures
@@ -369,8 +425,19 @@ async function executeJob(
           await sleep(delay);
         }
 
+        // Mark receiver as sent if any email succeeded (for timezone-aware jobs)
+        // This prevents sending to the same receiver multiple times
+        if (job.sendTime && receiverSent) {
+          sentReceiverIds.add(receiver.id);
+        }
+
         // Update progress after each receiver (final update for this receiver)
-        updateJobProgress(job.id, sentCount, failedCount);
+        updateJobProgress(
+          job.id,
+          sentCount,
+          failedCount,
+          Array.from(sentReceiverIds)
+        );
       } catch (error) {
         const errorMessage = `Error sending email to receiver ${receiver.id}: ${
           error instanceof Error ? error.message : 'Unknown error'
@@ -380,6 +447,13 @@ async function executeJob(
         addJobError(job.id, errorMessage, undefined, receiver.id);
         updateJobProgress(job.id, sentCount, failedCount);
       }
+    }
+
+    // Log summary if some receivers were skipped
+    if (skippedCount > 0) {
+      console.log(
+        `[JobExecutor] Skipped ${skippedCount} receiver(s) - not yet time to send in their timezone`
+      );
     }
 
     // Final status update

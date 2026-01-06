@@ -36,6 +36,7 @@ import { ReceiversTable } from '@/components/batch/ReceiversTable';
 import { SaveListDialog } from '@/components/batch/SaveListDialog';
 import { StoredListsView } from '@/components/batch/StoredListsView';
 import { JobCreator } from '@/components/jobs';
+import { useNotification } from '@/contexts/NotificationContext';
 import { useEmailJobs } from '@/hooks/useEmailJobs';
 import { useProfiles } from '@/hooks/useProfiles';
 import { useReceiverLists } from '@/hooks/useReceiverLists';
@@ -47,6 +48,7 @@ import { processReceivers } from '@/utils/csvUtils';
 import { calculateSendTimes, getEarliestSendTime } from '@/utils/scheduling';
 
 export const BatchOperationsTab: React.FC = () => {
+  const { showError, showWarning } = useNotification();
   const {
     receivers,
     tags,
@@ -165,14 +167,14 @@ export const BatchOperationsTab: React.FC = () => {
 
     const receiverList = lists.find((list) => list.id === savedListId);
     if (!receiverList) {
-      alert('Receiver list not found');
+      showError('Receiver list not found');
       return;
     }
 
     // Load the full list to get receivers for scheduling
     loadReceiverList(savedListId).then((fullList) => {
       if (!fullList) {
-        alert('Could not load receiver list');
+        showError('Could not load receiver list');
         return;
       }
 
@@ -254,7 +256,7 @@ export const BatchOperationsTab: React.FC = () => {
     const validReceivers = receivers.filter((r) => r.isValid);
 
     if (validReceivers.length === 0) {
-      alert('No valid receivers to export');
+      showWarning('No valid receivers to export');
       return;
     }
 

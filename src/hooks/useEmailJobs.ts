@@ -70,6 +70,7 @@ export const useEmailJobs = () => {
         receiverListId: jobData.receiverListId,
         status: 'scheduled',
         scheduledTime,
+        sendTime: jobData.sendTime, // Store sendTime for timezone-aware sending
         sentCount: 0,
         failedCount: 0,
         totalCount,
@@ -106,7 +107,12 @@ export const useEmailJobs = () => {
 
   // Update job progress
   const updateJobProgress = useCallback(
-    (id: string, sentCount: number, failedCount: number) => {
+    (
+      id: string,
+      sentCount: number,
+      failedCount: number,
+      sentReceiverIds?: string[]
+    ) => {
       const updatedJobs = jobs.map((job) => {
         if (job.id === id) {
           const newStatus: JobStatus =
@@ -120,6 +126,10 @@ export const useEmailJobs = () => {
             ...job,
             sentCount,
             failedCount,
+            sentReceiverIds:
+              sentReceiverIds !== undefined
+                ? sentReceiverIds
+                : job.sentReceiverIds,
             status: newStatus,
             updatedAt: new Date(),
           };
@@ -143,6 +153,7 @@ export const useEmailJobs = () => {
             templateId: jobData.templateId,
             receiverListId: jobData.receiverListId,
             scheduledTime,
+            sendTime: jobData.sendTime, // Update sendTime for timezone-aware sending
             totalCount,
             updatedAt: new Date(),
           };

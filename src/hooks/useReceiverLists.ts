@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
+import { useNotification } from '@/contexts/NotificationContext';
 import {
   ProcessedReceiver,
   ReceiverList,
@@ -57,6 +58,7 @@ export const useReceiverLists = () => {
   const [fullLists, setFullLists] = useState<ReceiverList[]>([]);
   const [currentList, setCurrentList] = useState<ReceiverList | null>(null);
   const [loading, setLoading] = useState(true);
+  const { showWarning } = useNotification();
 
   // Load lists from localStorage on mount
   useEffect(() => {
@@ -269,7 +271,7 @@ export const useReceiverLists = () => {
           : list.receivers.filter((r) => r.isValid);
 
         if (receiversToExport.length === 0) {
-          alert('No receivers to export');
+          showWarning('No receivers to export');
           return;
         }
 

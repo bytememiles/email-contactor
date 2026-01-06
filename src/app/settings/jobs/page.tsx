@@ -13,27 +13,30 @@ import {
 } from '@mui/material';
 
 import { JobCreator, JobList } from '@/components/jobs';
+import { useNotification } from '@/contexts/NotificationContext';
 import { useEmailJobs } from '@/hooks/useEmailJobs';
 import { useProfiles } from '@/hooks/useProfiles';
 import { useReceiverLists } from '@/hooks/useReceiverLists';
 import { useTemplates } from '@/hooks/useTemplates';
 import { EmailJob, JobForm } from '@/types/job';
+import { calculateSendTimes, getEarliestSendTime } from '@/utils/scheduling';
 
 export default function JobsPage() {
   const router = useRouter();
   const { jobs, loading, createJob, updateJob, deleteJob } = useEmailJobs();
   const { profiles } = useProfiles();
   const { templates } = useTemplates();
-  const { lists } = useReceiverLists();
+  const { lists, loadReceiverList } = useReceiverLists();
+  const { showError } = useNotification();
 
   const [showForm, setShowForm] = useState(false);
   const [editingJob, setEditingJob] = useState<EmailJob | null>(null);
 
-  const handleCreateJob = (data: JobForm) => {
+  const handleCreateJob = async (data: JobForm) => {
     // Find the receiver list
     const receiverList = lists.find((list) => list.id === data.receiverListId);
     if (!receiverList) {
-      alert('Receiver list not found');
+      showError('Receiver list not found');
       return;
     }
 
@@ -41,27 +44,29 @@ export default function JobsPage() {
     const sendTime = data.sendTime || '10:00';
     const [hours, minutes] = sendTime.split(':').map(Number);
 
-    // Create scheduled time with the specified time
-    const scheduledTime = new Date();
-    scheduledTime.setHours(hours, minutes, 0, 0);
-
-    // If the scheduled time is in the past, schedule for tomorrow
-    if (scheduledTime < new Date()) {
-      scheduledTime.setDate(scheduledTime.getDate() + 1);
+    // Load the full receiver list to get receivers with timezone info
+    const fullList = await loadReceiverList(data.receiverListId);
+    if (!fullList) {
+      showError('Could not load receiver list');
+      return;
     }
+
+    // Calculate timezone-aware send times
+    const scheduledTimes = calculateSendTimes(
+      fullList.receivers,
+      new Date(),
+      hours,
+      minutes
+    );
+    const earliestTime = getEarliestSendTime(scheduledTimes) || new Date();
 
     if (editingJob) {
       // Update existing job
-      updateJob(
-        editingJob.id,
-        data,
-        scheduledTime,
-        receiverList.validReceivers
-      );
+      updateJob(editingJob.id, data, earliestTime, receiverList.validReceivers);
       setEditingJob(null);
     } else {
-      // Create new job
-      createJob(data, scheduledTime, receiverList.validReceivers);
+      // Create new job with timezone-aware scheduling
+      createJob(data, earliestTime, receiverList.validReceivers);
     }
     setShowForm(false);
   };
@@ -77,7 +82,12 @@ export default function JobsPage() {
   };
 
   // Convert scheduled time to HH:mm format for the time input
+  // Use sendTime if available (timezone-aware), otherwise fall back to scheduledTime
   const getJobSendTime = (job: EmailJob): string => {
+    if (job.sendTime) {
+      return job.sendTime;
+    }
+    // Fallback for old jobs without sendTime
     const date = new Date(job.scheduledTime);
     const hours = date.getHours().toString().padStart(2, '0');
     const minutes = date.getMinutes().toString().padStart(2, '0');
