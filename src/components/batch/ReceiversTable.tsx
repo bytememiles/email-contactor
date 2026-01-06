@@ -1,12 +1,5 @@
 import React, { useState } from 'react';
-import {
-  CheckCircle,
-  Delete,
-  Error,
-  ExpandMore,
-  LocalOffer,
-  Warning,
-} from '@mui/icons-material';
+import { CheckCircle, Delete, Error, ExpandMore } from '@mui/icons-material';
 import {
   Alert,
   Box,
@@ -60,7 +53,6 @@ export const ReceiversTable: React.FC<ReceiversTableProps> = ({
   onAddTagToMultipleReceivers,
   onRemoveTagFromReceiver,
   onDeleteReceiver,
-  onUpdateReceiver,
 }) => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);

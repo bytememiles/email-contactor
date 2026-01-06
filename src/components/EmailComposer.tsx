@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Close, Send, Settings } from '@mui/icons-material';
+import { Close } from '@mui/icons-material';
 import {
   Alert,
   Box,
@@ -24,20 +24,15 @@ import {
   EmailEditor,
   FilePreview,
   RecipientFields,
-  SettingsModal,
   SMTPSelector,
 } from '@/components/email-composer';
 import { useEmailSender } from '@/hooks';
 import { useSMTPConfigsRedux } from '@/hooks/useSMTPConfigsRedux';
 import { EmailComposerProps, EmailPriority } from '@/types/email';
-import { SMTPConfig } from '@/types/smtp';
-import { EmailTemplate } from '@/types/template';
 
 export default function EmailComposer({ onClose, onSend }: EmailComposerProps) {
   // Form state
   const [toRecipients, setToRecipients] = useState<string[]>([]);
-  const [ccRecipients, setCcRecipients] = useState<string[]>([]);
-  const [showCc, setShowCc] = useState(false);
   const [subject, setSubject] = useState('');
   const [markdown, setMarkdown] = useState('');
   const [priority, setPriority] = useState<EmailPriority>('normal');
@@ -46,11 +41,6 @@ export default function EmailComposer({ onClose, onSend }: EmailComposerProps) {
   // Preview state
   const [previewFile, setPreviewFile] = useState<File | null>(null);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
-
-  // Settings state
-  const [showSettings, setShowSettings] = useState(false);
-  const [selectedSMTPConfig, setSelectedSMTPConfig] =
-    useState<SMTPConfig | null>(null);
 
   // Email sending hook
   const {
@@ -64,12 +54,8 @@ export default function EmailComposer({ onClose, onSend }: EmailComposerProps) {
   } = useEmailSender();
 
   // SMTP configurations hook
-  const {
-    selectedConfig,
-    setSelectedConfig,
-    hasConfigs,
-    loading: smtpLoading,
-  } = useSMTPConfigsRedux();
+  const { selectedConfig, setSelectedConfig, hasConfigs } =
+    useSMTPConfigsRedux();
 
   // Form handlers
   const handleAddFiles = (newFiles: File[]) => {
@@ -90,23 +76,11 @@ export default function EmailComposer({ onClose, onSend }: EmailComposerProps) {
 
   const resetForm = () => {
     setToRecipients([]);
-    setCcRecipients([]);
-    setShowCc(false);
     setSubject('');
     setMarkdown('');
     setPriority('normal');
     setAttachments([]);
     setPreviewFile(null);
-  };
-
-  const handleTemplateApply = (template: EmailTemplate) => {
-    setSubject(template.subject);
-    setMarkdown(template.content);
-    setShowSettings(false); // Close settings modal after applying template
-    showNotification(
-      `Template "${template.name}" applied successfully!`,
-      'success'
-    );
   };
 
   const handleEmailEditorTemplateApply = (subject: string, content: string) => {
@@ -155,7 +129,6 @@ export default function EmailComposer({ onClose, onSend }: EmailComposerProps) {
     // Start sending process with selected SMTP config
     startSendCountdown(
       toRecipients,
-      ccRecipients,
       subject,
       markdown,
       attachments,
@@ -206,7 +179,6 @@ export default function EmailComposer({ onClose, onSend }: EmailComposerProps) {
     // Start sending process with selected SMTP config
     startSendCountdown(
       toRecipients,
-      ccRecipients,
       subject,
       markdown,
       attachments,
@@ -252,14 +224,6 @@ export default function EmailComposer({ onClose, onSend }: EmailComposerProps) {
             Compose Email
           </Typography>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <IconButton
-              size="small"
-              sx={{ color: 'inherit' }}
-              onClick={() => setShowSettings(true)}
-              title="SMTP Settings"
-            >
-              <Settings fontSize="small" />
-            </IconButton>
             {onClose && (
               <IconButton
                 size="small"
@@ -290,11 +254,7 @@ export default function EmailComposer({ onClose, onSend }: EmailComposerProps) {
         {/* Recipient Fields */}
         <RecipientFields
           toRecipients={toRecipients}
-          ccRecipients={ccRecipients}
-          showCc={showCc}
           onToRecipientsChange={setToRecipients}
-          onCcRecipientsChange={setCcRecipients}
-          onShowCcChange={setShowCc}
           subject={subject}
           onSubjectChange={setSubject}
           priority={priority}
@@ -404,13 +364,6 @@ export default function EmailComposer({ onClose, onSend }: EmailComposerProps) {
         file={previewFile}
         isOpen={!!previewFile}
         onClose={handleClosePreview}
-      />
-
-      {/* Settings Modal */}
-      <SettingsModal
-        open={showSettings}
-        onClose={() => setShowSettings(false)}
-        onTemplateApply={handleTemplateApply}
       />
     </>
   );

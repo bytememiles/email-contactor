@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { isImageFile } from '@/utils';
 
@@ -8,6 +8,7 @@ interface ThumbnailCache {
 
 export const useThumbnails = (files: File[]) => {
   const [thumbnails, setThumbnails] = useState<ThumbnailCache>({});
+  const processedFilesRef = useRef<Set<string>>(new Set());
 
   const generateThumbnail = async (file: File): Promise<string> => {
     if (isImageFile(file)) {
@@ -61,7 +62,9 @@ export const useThumbnails = (files: File[]) => {
 
       for (const file of files) {
         const fileKey = `${file.name}-${file.size}-${file.lastModified}`;
-        if (!thumbnails[fileKey]) {
+        // Check if we've already processed this file
+        if (!processedFilesRef.current.has(fileKey)) {
+          processedFilesRef.current.add(fileKey);
           try {
             const thumbnail = await generateThumbnail(file);
             newThumbnails[fileKey] = thumbnail;
@@ -80,11 +83,17 @@ export const useThumbnails = (files: File[]) => {
 
     // Cleanup function to revoke blob URLs
     return () => {
-      Object.values(thumbnails).forEach((url) => {
-        if (url.startsWith('blob:')) {
-          URL.revokeObjectURL(url);
-        }
+      const currentProcessed = processedFilesRef.current;
+      setThumbnails((prev) => {
+        Object.values(prev).forEach((url) => {
+          if (url.startsWith('blob:')) {
+            URL.revokeObjectURL(url);
+          }
+        });
+        return {};
       });
+      // Reset processed files when files change
+      currentProcessed.clear();
     };
   }, [files]);
 

@@ -39,11 +39,7 @@ export interface AttachmentManagerProps {
 
 export interface RecipientFieldsProps {
   toRecipients: string[];
-  ccRecipients: string[];
-  showCc: boolean;
   onToRecipientsChange: (recipients: string[]) => void;
-  onCcRecipientsChange: (recipients: string[]) => void;
-  onShowCcChange: (show: boolean) => void;
   subject: string;
   onSubjectChange: (subject: string) => void;
   priority: EmailPriority;

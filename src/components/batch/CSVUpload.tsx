@@ -182,21 +182,28 @@ export const CSVUpload: React.FC<CSVUploadProps> = ({
             <ListItem sx={{ py: 0.5 }}>
               <ListItemIcon sx={{ minWidth: 20 }}>•</ListItemIcon>
               <ListItemText
-                primary="First row must contain headers: full name, email, location"
+                primary="First row must contain headers (case-insensitive, fuzzy matching supported)"
                 primaryTypographyProps={{ variant: 'body2' }}
               />
             </ListItem>
             <ListItem sx={{ py: 0.5 }}>
               <ListItemIcon sx={{ minWidth: 20 }}>•</ListItemIcon>
               <ListItemText
-                primary="Subsequent rows contain the corresponding data"
+                primary="Required columns: First name, Email, State (US states)"
                 primaryTypographyProps={{ variant: 'body2' }}
               />
             </ListItem>
             <ListItem sx={{ py: 0.5 }}>
               <ListItemIcon sx={{ minWidth: 20 }}>•</ListItemIcon>
               <ListItemText
-                primary="Location can be city or country (e.g., 'New York', 'Germany')"
+                primary="Optional columns: No, Github (URL), Telegram"
+                primaryTypographyProps={{ variant: 'body2' }}
+              />
+            </ListItem>
+            <ListItem sx={{ py: 0.5 }}>
+              <ListItemIcon sx={{ minWidth: 20 }}>•</ListItemIcon>
+              <ListItemText
+                primary="State accepts abbreviations (CA, NY) or full names (California, New York)"
                 primaryTypographyProps={{ variant: 'body2' }}
               />
             </ListItem>
@@ -210,13 +217,13 @@ export const CSVUpload: React.FC<CSVUploadProps> = ({
           <CardContent
             sx={{ py: 1, fontFamily: 'monospace', fontSize: '0.875rem' }}
           >
-            full name,email,location
+            No,First Name,Email,Github,State,Telegram
             <br />
-            John Doe,john@example.com,New York
+            1,John,john@example.com,https://github.com/john,CA,@john
             <br />
-            Jane Smith,jane@example.com,London
+            2,Jane,jane@example.com,https://github.com/jane,New York,@jane
             <br />
-            Bob Johnson,bob@example.com,Germany
+            3,Bob,bob@example.com,,TX,@bob
           </CardContent>
         </Card>
       </Box>

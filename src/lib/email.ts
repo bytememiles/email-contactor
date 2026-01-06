@@ -40,7 +40,6 @@ export interface EmailConfig {
 
 export interface EmailData {
   to: string;
-  cc?: string;
   subject: string;
   text?: string;
   html?: string;
@@ -105,7 +104,6 @@ export async function sendEmail(emailData: EmailData): Promise<boolean> {
     const mailOptions = {
       from: fromAddress,
       to: emailData.to,
-      cc: emailData.cc,
       subject: emailData.subject,
       text: emailData.text,
       html: emailData.html,

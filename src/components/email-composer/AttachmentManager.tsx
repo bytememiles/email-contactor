@@ -1,5 +1,5 @@
 import React from 'react';
-import { Close, GetApp } from '@mui/icons-material';
+import { Close } from '@mui/icons-material';
 import { Box, Card, CardContent, IconButton, Typography } from '@mui/material';
 
 import { useThumbnails } from '@/hooks/useThumbnails';
