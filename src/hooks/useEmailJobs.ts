@@ -120,6 +120,29 @@ export const useEmailJobs = () => {
     [jobs, saveJobs]
   );
 
+  // Update job
+  const updateJob = useCallback(
+    (id: string, jobData: JobForm, scheduledTime: Date, totalCount: number) => {
+      const updatedJobs = jobs.map((job) => {
+        if (job.id === id) {
+          return {
+            ...job,
+            profileId: jobData.profileId,
+            templateId: jobData.templateId,
+            receiverListId: jobData.receiverListId,
+            scheduledTime,
+            totalCount,
+            updatedAt: new Date(),
+          };
+        }
+        return job;
+      });
+
+      saveJobs(updatedJobs);
+    },
+    [jobs, saveJobs]
+  );
+
   // Delete job
   const deleteJob = useCallback(
     (id: string) => {
@@ -161,6 +184,7 @@ export const useEmailJobs = () => {
     jobs,
     loading,
     createJob,
+    updateJob,
     updateJobStatus,
     updateJobProgress,
     deleteJob,

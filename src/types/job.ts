@@ -24,6 +24,7 @@ export interface JobForm {
   profileId: string;
   templateId: string;
   receiverListId: string;
+  sendTime?: string; // Time in HH:mm format (e.g., "10:00")
 }
 
 export interface ScheduledSendTime {

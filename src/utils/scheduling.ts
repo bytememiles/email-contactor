@@ -2,11 +2,13 @@ import { ScheduledSendTime } from '@/types/job';
 import { ProcessedReceiver } from '@/types/receiver';
 
 /**
- * Calculate optimal send time (10 AM local time) for each recipient based on timezone
+ * Calculate optimal send time (default 10 AM local time) for each recipient based on timezone
  */
 export function calculateSendTimes(
   receivers: ProcessedReceiver[],
-  baseDate: Date = new Date()
+  baseDate: Date = new Date(),
+  sendHour: number = 10,
+  sendMinute: number = 0
 ): ScheduledSendTime[] {
   // Group receivers by timezone
   const timezoneGroups = new Map<string, string[]>();
@@ -44,13 +46,15 @@ export function calculateSendTimes(
         parseInt(parts.find((p) => p.type === 'month')?.value || '0') - 1;
       const day = parseInt(parts.find((p) => p.type === 'day')?.value || '0');
 
-      // Create date for 10 AM in the target timezone
+      // Create date for specified time in the target timezone
       // We'll create it in UTC and then convert
-      const sendTime = new Date(Date.UTC(year, month, day, 10, 0, 0, 0));
+      const sendTime = new Date(
+        Date.UTC(year, month, day, sendHour, sendMinute, 0, 0)
+      );
 
       // Adjust for timezone offset
       const tzOffset = getTimezoneOffset(timezone, sendTime);
-      sendTime.setUTCHours(10 - tzOffset);
+      sendTime.setUTCHours(sendHour - tzOffset, sendMinute);
 
       // If the calculated time is in the past, schedule for tomorrow
       if (sendTime < now) {
@@ -67,10 +71,10 @@ export function calculateSendTimes(
         `Error calculating send time for timezone ${timezone}:`,
         error
       );
-      // Fallback: schedule for 10 AM UTC tomorrow
+      // Fallback: schedule for specified time UTC tomorrow
       const fallbackTime = new Date(baseDate);
       fallbackTime.setUTCDate(fallbackTime.getUTCDate() + 1);
-      fallbackTime.setUTCHours(10, 0, 0, 0);
+      fallbackTime.setUTCHours(sendHour, sendMinute, 0, 0);
 
       scheduledTimes.push({
         timezone,

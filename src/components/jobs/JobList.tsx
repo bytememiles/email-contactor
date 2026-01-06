@@ -2,6 +2,7 @@ import React from 'react';
 import {
   CheckCircle,
   Delete,
+  Edit,
   Error,
   Pending,
   Schedule,
@@ -22,6 +23,7 @@ import { EmailJob, JobStatus } from '@/types/job';
 interface JobListProps {
   jobs: EmailJob[];
   onDelete: (id: string) => void;
+  onEdit?: (job: EmailJob) => void;
   profileNames: Record<string, string>;
   templateNames: Record<string, string>;
 }
@@ -51,6 +53,7 @@ const statusConfig: Record<
 export const JobList: React.FC<JobListProps> = ({
   jobs,
   onDelete,
+  onEdit,
   profileNames,
   templateNames,
 }) => {
@@ -117,14 +120,28 @@ export const JobList: React.FC<JobListProps> = ({
                     </Typography>
                   )}
                 </Box>
-                <IconButton
-                  size="small"
-                  onClick={() => onDelete(job.id)}
-                  color="error"
-                  title="Delete"
-                >
-                  <Delete />
-                </IconButton>
+                <Box sx={{ display: 'flex', gap: 0.5 }}>
+                  {onEdit &&
+                    (job.status === 'scheduled' ||
+                      job.status === 'pending') && (
+                      <IconButton
+                        size="small"
+                        onClick={() => onEdit(job)}
+                        color="primary"
+                        title="Edit"
+                      >
+                        <Edit />
+                      </IconButton>
+                    )}
+                  <IconButton
+                    size="small"
+                    onClick={() => onDelete(job.id)}
+                    color="error"
+                    title="Delete"
+                  >
+                    <Delete />
+                  </IconButton>
+                </Box>
               </Box>
 
               {job.status === 'sending' && (

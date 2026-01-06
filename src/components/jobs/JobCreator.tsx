@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Box,
   Button,
@@ -6,6 +6,7 @@ import {
   InputLabel,
   MenuItem,
   Select,
+  TextField,
   Typography,
 } from '@mui/material';
 
@@ -20,6 +21,8 @@ interface JobCreatorProps {
   receiverLists: ReceiverListSummary[];
   onSubmit: (data: JobForm) => void;
   onCancel: () => void;
+  initialData?: JobForm;
+  mode?: 'create' | 'edit';
 }
 
 export const JobCreator: React.FC<JobCreatorProps> = ({
@@ -28,16 +31,62 @@ export const JobCreator: React.FC<JobCreatorProps> = ({
   receiverLists,
   onSubmit,
   onCancel,
+  initialData,
+  mode = 'create',
 }) => {
-  const [formData, setFormData] = useState<JobForm>({
-    profileId: '',
-    templateId: '',
-    receiverListId: '',
+  // Extract time from scheduledTime if editing
+  const getInitialSendTime = (): string => {
+    if (initialData?.sendTime) {
+      return initialData.sendTime;
+    }
+    return '10:00'; // Default to 10 AM
+  };
+
+  // Lazy initialization to avoid setState in effect
+  const getInitialFormData = (): JobForm => ({
+    profileId: initialData?.profileId || '',
+    templateId: initialData?.templateId || '',
+    receiverListId: initialData?.receiverListId || '',
+    sendTime: getInitialSendTime(),
   });
+
+  const [formData, setFormData] = useState<JobForm>(getInitialFormData);
 
   const [errors, setErrors] = useState<Partial<Record<keyof JobForm, string>>>(
     {}
   );
+
+  // Update form data when initialData changes (e.g., switching between create/edit)
+  // Use a ref to track previous initialData to avoid unnecessary updates
+  const prevInitialDataRef = useRef(initialData);
+
+  useEffect(() => {
+    // Only update if initialData actually changed
+    if (prevInitialDataRef.current !== initialData) {
+      prevInitialDataRef.current = initialData;
+
+      // Schedule state update in next tick to avoid synchronous setState in effect
+      queueMicrotask(() => {
+        if (initialData) {
+          setFormData({
+            profileId: initialData.profileId || '',
+            templateId: initialData.templateId || '',
+            receiverListId: initialData.receiverListId || '',
+            sendTime: initialData.sendTime || '10:00',
+          });
+        } else {
+          // Reset to default values when creating new job
+          setFormData({
+            profileId: '',
+            templateId: '',
+            receiverListId: '',
+            sendTime: '10:00',
+          });
+        }
+        setErrors({});
+      });
+    }
+  }, [initialData]);
 
   const validate = (): boolean => {
     const newErrors: Partial<Record<keyof JobForm, string>> = {};
@@ -181,9 +230,27 @@ export const JobCreator: React.FC<JobCreatorProps> = ({
         )}
       </FormControl>
 
+      <TextField
+        fullWidth
+        margin="normal"
+        label="Sending Time"
+        type="time"
+        value={formData.sendTime || '10:00'}
+        onChange={(e) =>
+          setFormData((prev) => ({ ...prev, sendTime: e.target.value }))
+        }
+        InputLabelProps={{
+          shrink: true,
+        }}
+        inputProps={{
+          step: 300, // 5 minutes
+        }}
+        helperText="Time when emails will be sent (default: 10:00 AM)"
+      />
+
       <Box sx={{ display: 'flex', gap: 2, mt: 3 }}>
         <Button type="submit" variant="contained">
-          Create Job
+          {mode === 'edit' ? 'Update Job' : 'Create Job'}
         </Button>
         <Button variant="outlined" onClick={onCancel}>
           Cancel

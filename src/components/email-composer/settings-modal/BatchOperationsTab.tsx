@@ -176,8 +176,17 @@ export const BatchOperationsTab: React.FC = () => {
         return;
       }
 
+      // Parse the send time from the form (format: "HH:mm")
+      const sendTime = jobData.sendTime || '10:00';
+      const [hours, minutes] = sendTime.split(':').map(Number);
+
       // Calculate send times based on receiver timezones
-      const scheduledTimes = calculateSendTimes(fullList.receivers);
+      const scheduledTimes = calculateSendTimes(
+        fullList.receivers,
+        new Date(),
+        hours,
+        minutes
+      );
       const earliestTime = getEarliestSendTime(scheduledTimes) || new Date();
 
       createJob(jobData, earliestTime, receiverList.validReceivers);

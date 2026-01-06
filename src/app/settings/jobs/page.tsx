@@ -16,15 +16,16 @@ import { useEmailJobs } from '@/hooks/useEmailJobs';
 import { useProfiles } from '@/hooks/useProfiles';
 import { useReceiverLists } from '@/hooks/useReceiverLists';
 import { useTemplates } from '@/hooks/useTemplates';
-import { JobForm } from '@/types/job';
+import { EmailJob, JobForm } from '@/types/job';
 
 export default function JobsPage() {
-  const { jobs, loading, createJob, deleteJob } = useEmailJobs();
+  const { jobs, loading, createJob, updateJob, deleteJob } = useEmailJobs();
   const { profiles } = useProfiles();
   const { templates } = useTemplates();
   const { lists } = useReceiverLists();
 
   const [showForm, setShowForm] = useState(false);
+  const [editingJob, setEditingJob] = useState<EmailJob | null>(null);
 
   const handleCreateJob = (data: JobForm) => {
     // Find the receiver list
@@ -34,16 +35,51 @@ export default function JobsPage() {
       return;
     }
 
-    // For now, we'll use a simple scheduling approach
-    // In a real implementation, you'd load the actual receivers and calculate times
+    // Parse the send time from the form (format: "HH:mm")
+    const sendTime = data.sendTime || '10:00';
+    const [hours, minutes] = sendTime.split(':').map(Number);
+
+    // Create scheduled time with the specified time
     const scheduledTime = new Date();
-    scheduledTime.setHours(10, 0, 0, 0);
+    scheduledTime.setHours(hours, minutes, 0, 0);
+
+    // If the scheduled time is in the past, schedule for tomorrow
     if (scheduledTime < new Date()) {
       scheduledTime.setDate(scheduledTime.getDate() + 1);
     }
 
-    createJob(data, scheduledTime, receiverList.validReceivers);
+    if (editingJob) {
+      // Update existing job
+      updateJob(
+        editingJob.id,
+        data,
+        scheduledTime,
+        receiverList.validReceivers
+      );
+      setEditingJob(null);
+    } else {
+      // Create new job
+      createJob(data, scheduledTime, receiverList.validReceivers);
+    }
     setShowForm(false);
+  };
+
+  const handleEditJob = (job: EmailJob) => {
+    setEditingJob(job);
+    setShowForm(true);
+  };
+
+  const handleCancel = () => {
+    setShowForm(false);
+    setEditingJob(null);
+  };
+
+  // Convert scheduled time to HH:mm format for the time input
+  const getJobSendTime = (job: EmailJob): string => {
+    const date = new Date(job.scheduledTime);
+    const hours = date.getHours().toString().padStart(2, '0');
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    return `${hours}:${minutes}`;
   };
 
   // Create lookup maps
@@ -100,25 +136,34 @@ export default function JobsPage() {
         <JobList
           jobs={sortedJobs}
           onDelete={deleteJob}
+          onEdit={handleEditJob}
           profileNames={profileNames}
           templateNames={templateNames}
         />
       )}
 
-      <Dialog
-        open={showForm}
-        onClose={() => setShowForm(false)}
-        maxWidth="md"
-        fullWidth
-      >
-        <DialogTitle>Create Email Job</DialogTitle>
+      <Dialog open={showForm} onClose={handleCancel} maxWidth="md" fullWidth>
+        <DialogTitle>
+          {editingJob ? 'Edit Email Job' : 'Create Email Job'}
+        </DialogTitle>
         <DialogContent>
           <JobCreator
             profiles={profiles}
             templates={templates}
             receiverLists={lists}
             onSubmit={handleCreateJob}
-            onCancel={() => setShowForm(false)}
+            onCancel={handleCancel}
+            initialData={
+              editingJob
+                ? {
+                    profileId: editingJob.profileId,
+                    templateId: editingJob.templateId,
+                    receiverListId: editingJob.receiverListId,
+                    sendTime: getJobSendTime(editingJob),
+                  }
+                : undefined
+            }
+            mode={editingJob ? 'edit' : 'create'}
           />
         </DialogContent>
       </Dialog>

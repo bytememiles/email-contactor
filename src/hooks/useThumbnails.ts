@@ -82,8 +82,10 @@ export const useThumbnails = (files: File[]) => {
     generateThumbnails();
 
     // Cleanup function to revoke blob URLs
+    // Capture the ref value at the start of the effect for use in cleanup
+    const processedFilesAtStart = processedFilesRef.current;
+
     return () => {
-      const currentProcessed = processedFilesRef.current;
       setThumbnails((prev) => {
         Object.values(prev).forEach((url) => {
           if (url.startsWith('blob:')) {
@@ -93,7 +95,7 @@ export const useThumbnails = (files: File[]) => {
         return {};
       });
       // Reset processed files when files change
-      currentProcessed.clear();
+      processedFilesAtStart.clear();
     };
   }, [files]);
 
