@@ -100,6 +100,7 @@ export const AttachmentManager: React.FC<AttachmentManagerProps> = ({
                 }}
               >
                 {isImage && thumbnail ? (
+                  // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={thumbnail}
                     alt={file.name}

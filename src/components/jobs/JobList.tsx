@@ -1,4 +1,7 @@
+'use client';
+
 import React from 'react';
+import { useRouter } from 'next/navigation';
 import {
   CheckCircle,
   Delete,
@@ -57,6 +60,7 @@ export const JobList: React.FC<JobListProps> = ({
   profileNames,
   templateNames,
 }) => {
+  const router = useRouter();
   if (jobs.length === 0) {
     return (
       <Box sx={{ textAlign: 'center', py: 4 }}>
@@ -118,6 +122,20 @@ export const JobList: React.FC<JobListProps> = ({
                     >
                       Error: {job.error}
                     </Typography>
+                  )}
+                  {((job.errors && job.errors.length > 0) ||
+                    (job.warnings && job.warnings.length > 0)) && (
+                    <Box sx={{ mt: 1 }}>
+                      <Typography
+                        variant="caption"
+                        color="text.secondary"
+                        component="span"
+                        sx={{ cursor: 'pointer', textDecoration: 'underline' }}
+                        onClick={() => router.push('/settings/jobs/history')}
+                      >
+                        View detailed errors and warnings →
+                      </Typography>
+                    </Box>
                   )}
                 </Box>
                 <Box sx={{ display: 'flex', gap: 0.5 }}>

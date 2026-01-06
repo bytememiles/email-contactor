@@ -5,6 +5,14 @@ export type JobStatus =
   | 'completed'
   | 'failed';
 
+export interface JobError {
+  timestamp: Date;
+  message: string;
+  email?: string; // Email address that failed (if applicable)
+  receiverId?: string; // Receiver ID that failed (if applicable)
+  type: 'error' | 'warning';
+}
+
 export interface EmailJob {
   id: string;
   profileId: string;
@@ -17,7 +25,9 @@ export interface EmailJob {
   totalCount: number;
   createdAt: Date;
   updatedAt: Date;
-  error?: string;
+  error?: string; // Main error message (for backward compatibility)
+  errors?: JobError[]; // Detailed error history
+  warnings?: JobError[]; // Warning messages
 }
 
 export interface JobForm {

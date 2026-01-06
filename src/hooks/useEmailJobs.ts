@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 
-import { EmailJob, JobForm, JobStatus } from '@/types/job';
+import { EmailJob, JobError, JobForm, JobStatus } from '@/types/job';
 
 const STORAGE_KEY = 'email_jobs';
 
@@ -21,12 +21,24 @@ export const useEmailJobs = () => {
             createdAt: string;
             updatedAt: string;
             scheduledTime: string;
+            errors?: Array<Omit<JobError, 'timestamp'> & { timestamp: string }>;
+            warnings?: Array<
+              Omit<JobError, 'timestamp'> & { timestamp: string }
+            >;
           };
           return {
             ...jobData,
             createdAt: new Date(jobData.createdAt),
             updatedAt: new Date(jobData.updatedAt),
             scheduledTime: new Date(jobData.scheduledTime),
+            errors: jobData.errors?.map((e) => ({
+              ...e,
+              timestamp: new Date(e.timestamp),
+            })),
+            warnings: jobData.warnings?.map((w) => ({
+              ...w,
+              timestamp: new Date(w.timestamp),
+            })),
           };
         });
         setJobs(parsedJobs);
@@ -180,6 +192,59 @@ export const useEmailJobs = () => {
       .sort((a, b) => a.scheduledTime.getTime() - b.scheduledTime.getTime());
   }, [jobs]);
 
+  // Add error to job
+  const addJobError = useCallback(
+    (id: string, message: string, email?: string, receiverId?: string) => {
+      const updatedJobs = jobs.map((job) => {
+        if (job.id === id) {
+          const error: JobError = {
+            timestamp: new Date(),
+            message,
+            email,
+            receiverId,
+            type: 'error',
+          };
+          return {
+            ...job,
+            errors: [...(job.errors || []), error],
+            error: message, // Keep main error for backward compatibility
+            updatedAt: new Date(),
+          };
+        }
+        return job;
+      });
+
+      saveJobs(updatedJobs);
+    },
+    [jobs, saveJobs]
+  );
+
+  // Add warning to job
+  const addJobWarning = useCallback(
+    (id: string, message: string, email?: string, receiverId?: string) => {
+      const updatedJobs = jobs.map((job) => {
+        if (job.id === id) {
+          const warning: JobError = {
+            timestamp: new Date(),
+            message,
+            email,
+            receiverId,
+            type: 'warning',
+          };
+          return {
+            ...job,
+            warnings: [...(job.warnings || []), warning],
+            updatedAt: new Date(),
+          };
+        }
+        return job;
+      });
+
+      saveJobs(updatedJobs);
+    },
+    [jobs, saveJobs]
+  );
+
   return {
     jobs,
     loading,
@@ -191,5 +256,7 @@ export const useEmailJobs = () => {
     getJob,
     getJobsByStatus,
     getUpcomingJobs,
+    addJobError,
+    addJobWarning,
   };
 };

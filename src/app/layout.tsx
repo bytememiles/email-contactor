@@ -1,6 +1,9 @@
 import type { Metadata } from 'next';
 
+import { JobExecutor } from '@/components/jobs';
 import { ReduxProvider } from '@/components/ReduxProvider';
+import { NotificationProvider } from '@/contexts/NotificationContext';
+import { ThemeProvider } from '@/contexts/ThemeContext';
 
 import './globals.css';
 
@@ -33,7 +36,14 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className="antialiased">
-        <ReduxProvider>{children}</ReduxProvider>
+        <ThemeProvider>
+          <ReduxProvider>
+            <NotificationProvider>
+              <JobExecutor />
+              {children}
+            </NotificationProvider>
+          </ReduxProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

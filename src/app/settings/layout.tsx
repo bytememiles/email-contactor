@@ -11,31 +11,20 @@ import {
 } from '@mui/icons-material';
 import {
   Box,
-  createTheme,
-  CssBaseline,
   Drawer,
   List,
   ListItem,
   ListItemButton,
   ListItemIcon,
   ListItemText,
-  ThemeProvider,
   Toolbar,
   Typography,
 } from '@mui/material';
 
-const drawerWidth = 240;
+import { Breadcrumbs } from '@/components/Breadcrumbs';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
-const theme = createTheme({
-  palette: {
-    primary: {
-      main: '#1976d2',
-    },
-    secondary: {
-      main: '#dc004e',
-    },
-  },
-});
+const drawerWidth = 240;
 
 const menuItems = [
   {
@@ -74,50 +63,51 @@ export default function SettingsLayout({
   const router = useRouter();
 
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
-      <Box sx={{ display: 'flex', minHeight: '100vh' }}>
-        <Drawer
-          variant="permanent"
-          sx={{
+    <Box sx={{ display: 'flex', minHeight: '100vh' }}>
+      <Drawer
+        variant="permanent"
+        sx={{
+          width: drawerWidth,
+          flexShrink: 0,
+          '& .MuiDrawer-paper': {
             width: drawerWidth,
-            flexShrink: 0,
-            '& .MuiDrawer-paper': {
-              width: drawerWidth,
-              boxSizing: 'border-box',
-            },
-          }}
-        >
-          <Toolbar>
-            <Typography variant="h6" noWrap component="div">
-              Settings
-            </Typography>
-          </Toolbar>
-          <List>
-            {menuItems.map((item) => (
-              <ListItem key={item.path} disablePadding>
-                <ListItemButton
-                  selected={pathname === item.path}
-                  onClick={() => router.push(item.path)}
-                >
-                  <ListItemIcon>{item.icon}</ListItemIcon>
-                  <ListItemText primary={item.label} />
-                </ListItemButton>
-              </ListItem>
-            ))}
-          </List>
-        </Drawer>
-        <Box
-          component="main"
-          sx={{
-            flexGrow: 1,
-            bgcolor: 'background.default',
-            p: 3,
-          }}
-        >
-          {children}
-        </Box>
+            boxSizing: 'border-box',
+          },
+        }}
+      >
+        <Toolbar>
+          <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
+            Settings
+          </Typography>
+          <ThemeToggle />
+        </Toolbar>
+        <List>
+          {menuItems.map((item) => (
+            <ListItem key={item.path} disablePadding>
+              <ListItemButton
+                selected={
+                  pathname === item.path || pathname.startsWith(item.path + '/')
+                }
+                onClick={() => router.push(item.path)}
+              >
+                <ListItemIcon>{item.icon}</ListItemIcon>
+                <ListItemText primary={item.label} />
+              </ListItemButton>
+            </ListItem>
+          ))}
+        </List>
+      </Drawer>
+      <Box
+        component="main"
+        sx={{
+          flexGrow: 1,
+          bgcolor: 'background.default',
+          p: 3,
+        }}
+      >
+        <Breadcrumbs />
+        {children}
       </Box>
-    </ThemeProvider>
+    </Box>
   );
 }

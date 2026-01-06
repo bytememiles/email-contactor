@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Add } from '@mui/icons-material';
+import { useRouter } from 'next/navigation';
+import { Add, History } from '@mui/icons-material';
 import {
   Box,
   Button,
@@ -19,6 +20,7 @@ import { useTemplates } from '@/hooks/useTemplates';
 import { EmailJob, JobForm } from '@/types/job';
 
 export default function JobsPage() {
+  const router = useRouter();
   const { jobs, loading, createJob, updateJob, deleteJob } = useEmailJobs();
   const { profiles } = useProfiles();
   const { templates } = useTemplates();
@@ -116,18 +118,27 @@ export default function JobsPage() {
             View and manage scheduled email jobs.
           </Typography>
         </Box>
-        <Button
-          startIcon={<Add />}
-          variant="contained"
-          onClick={() => setShowForm(true)}
-          disabled={
-            profiles.length === 0 ||
-            templates.length === 0 ||
-            lists.length === 0
-          }
-        >
-          Create Job
-        </Button>
+        <Box sx={{ display: 'flex', gap: 2 }}>
+          <Button
+            startIcon={<History />}
+            variant="outlined"
+            onClick={() => router.push('/settings/jobs/history')}
+          >
+            View History
+          </Button>
+          <Button
+            startIcon={<Add />}
+            variant="contained"
+            onClick={() => setShowForm(true)}
+            disabled={
+              profiles.length === 0 ||
+              templates.length === 0 ||
+              lists.length === 0
+            }
+          >
+            Create Job
+          </Button>
+        </Box>
       </Box>
 
       {loading ? (

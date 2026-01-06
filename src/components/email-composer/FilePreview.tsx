@@ -76,6 +76,7 @@ export const FilePreview: React.FC<FilePreviewProps> = ({
 
     if (isImageFile(file)) {
       return (
+        // eslint-disable-next-line @next/next/no-img-element
         <img
           src={previewUrl}
           alt={file.name}
