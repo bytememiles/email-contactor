@@ -9,6 +9,7 @@ export interface SMTPConfig {
   password: string;
   encryption: 'tls' | 'ssl' | 'none';
   fromAddress: string;
+  fromName?: string;
   isDefault?: boolean;
   createdAt: string;
   updatedAt: string;
@@ -22,6 +23,7 @@ export interface SMTPConfigForm {
   password: string;
   encryption: 'tls' | 'ssl' | 'none';
   fromAddress: string;
+  fromName?: string;
 }
 
 export interface SettingsModalProps {

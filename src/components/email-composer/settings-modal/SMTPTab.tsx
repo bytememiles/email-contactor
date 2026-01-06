@@ -57,6 +57,7 @@ export const SMTPTab: React.FC = () => {
     password: '',
     encryption: 'tls',
     fromAddress: '',
+    fromName: '',
   });
 
   const [errors, setErrors] = useState<Partial<SMTPConfigForm>>({});
@@ -70,6 +71,7 @@ export const SMTPTab: React.FC = () => {
       password: '',
       encryption: 'tls',
       fromAddress: '',
+      fromName: '',
     });
     setErrors({});
     setEditingConfig(null);
@@ -104,6 +106,7 @@ export const SMTPTab: React.FC = () => {
       password: formData.password,
       encryption: formData.encryption,
       fromAddress: formData.fromAddress,
+      fromName: formData.fromName || undefined,
     };
 
     if (editingConfig) {
@@ -124,6 +127,7 @@ export const SMTPTab: React.FC = () => {
       password: config.password,
       encryption: config.encryption,
       fromAddress: config.fromAddress,
+      fromName: config.fromName || '',
     });
     setEditingConfig(config);
     setShowForm(true);
@@ -307,11 +311,28 @@ export const SMTPTab: React.FC = () => {
                   }))
                 }
                 error={!!errors.fromAddress}
-                helperText={errors.fromAddress}
+                helperText={
+                  errors.fromAddress ||
+                  'The email address that recipients will see as the sender'
+                }
                 fullWidth
                 size="small"
                 placeholder="your-email@example.com"
-                sx={{ gridColumn: { sm: '1 / -1' } }}
+              />
+
+              <TextField
+                label="From Name (Display Name)"
+                value={formData.fromName || ''}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    fromName: e.target.value,
+                  }))
+                }
+                fullWidth
+                size="small"
+                placeholder="Your Name"
+                helperText="The name that recipients will see as the sender"
               />
             </Box>
 
@@ -370,7 +391,10 @@ export const SMTPTab: React.FC = () => {
                   secondary={
                     <>
                       {config.host}:{config.port} (
-                      {config.encryption.toUpperCase()}) • {config.fromAddress}
+                      {config.encryption.toUpperCase()}) •{' '}
+                      {config.fromName
+                        ? `${config.fromName} <${config.fromAddress}>`
+                        : config.fromAddress}
                     </>
                   }
                 />

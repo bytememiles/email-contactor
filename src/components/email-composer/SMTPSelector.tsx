@@ -171,7 +171,10 @@ export const SMTPSelector: React.FC<SMTPSelectorProps> = ({
               }
               secondary={
                 <Typography variant="caption" color="text.secondary">
-                  {config.fromAddress} • {config.host}
+                  {config.fromName
+                    ? `${config.fromName} <${config.fromAddress}>`
+                    : config.fromAddress}{' '}
+                  • {config.host}
                 </Typography>
               }
             />

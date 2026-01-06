@@ -101,8 +101,15 @@ export async function sendEmail(emailData: EmailData): Promise<boolean> {
       throw new Error('From address is required in SMTP configuration');
     }
 
+    // Format from address with name if provided
+    let formattedFrom = fromAddress;
+    if (emailData.smtpConfig.fromName && emailData.smtpConfig.fromName.trim()) {
+      // Format as "Name <email@example.com>"
+      formattedFrom = `${emailData.smtpConfig.fromName.trim()} <${fromAddress}>`;
+    }
+
     const mailOptions = {
-      from: fromAddress,
+      from: formattedFrom,
       to: emailData.to,
       subject: emailData.subject,
       text: emailData.text,
@@ -116,7 +123,7 @@ export async function sendEmail(emailData: EmailData): Promise<boolean> {
     console.log('Sending email with SMTP config:', {
       host: emailData.smtpConfig.host,
       port: emailData.smtpConfig.port,
-      from: fromAddress,
+      from: formattedFrom,
       to: emailData.to,
     });
 
