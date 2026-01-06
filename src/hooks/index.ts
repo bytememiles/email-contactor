@@ -1,3 +1,4 @@
+export { useBulkEmailSender } from './useBulkEmailSender';
 export { useEmailSender } from './useEmailSender';
 export { useReceiverLists } from './useReceiverLists';
 export { useReceivers } from './useReceivers';

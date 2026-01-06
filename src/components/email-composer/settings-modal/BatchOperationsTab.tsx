@@ -7,6 +7,7 @@ import {
   Group,
   Refresh,
   Save,
+  Send,
   Upload,
   Work,
 } from '@mui/icons-material';
@@ -30,13 +31,16 @@ import {
   Typography,
 } from '@mui/material';
 
+import { BulkSendDialog } from '@/components/batch/BulkSendDialog';
 import { ConfirmDeleteDialog } from '@/components/batch/ConfirmDeleteDialog';
 import { CSVUpload } from '@/components/batch/CSVUpload';
+import { ExportListDialog } from '@/components/batch/ExportListDialog';
 import { ReceiversTable } from '@/components/batch/ReceiversTable';
 import { SaveListDialog } from '@/components/batch/SaveListDialog';
 import { StoredListsView } from '@/components/batch/StoredListsView';
 import { JobCreator } from '@/components/jobs';
 import { useNotification } from '@/contexts/NotificationContext';
+import { useBulkEmailSender } from '@/hooks';
 import { useEmailJobs } from '@/hooks/useEmailJobs';
 import { useProfiles } from '@/hooks/useProfiles';
 import { useReceiverLists } from '@/hooks/useReceiverLists';
@@ -67,6 +71,7 @@ export const BatchOperationsTab: React.FC = () => {
     lists,
     loading: listsLoading,
     createReceiverList,
+    updateReceiverList,
     deleteReceiverList,
     loadReceiverList,
     clearCurrentList,
@@ -74,8 +79,9 @@ export const BatchOperationsTab: React.FC = () => {
   } = useReceiverLists();
 
   const { profiles } = useProfiles();
-  const { templates } = useTemplates();
+  const { templates, getTemplate } = useTemplates();
   const { createJob } = useEmailJobs();
+  const { sendBulkEmails, isSending, progress } = useBulkEmailSender();
 
   const [activeTab, setActiveTab] = useState(0);
   const [hasInitializedTab, setHasInitializedTab] = useState(false);
@@ -92,6 +98,11 @@ export const BatchOperationsTab: React.FC = () => {
   const [listToDelete, setListToDelete] = useState<string | null>(null);
   const [showJobDialog, setShowJobDialog] = useState(false);
   const [savedListId, setSavedListId] = useState<string | null>(null);
+  const [showBulkSendDialog, setShowBulkSendDialog] = useState(false);
+  const [editingListId, setEditingListId] = useState<string | null>(null);
+  const [showExportDialog, setShowExportDialog] = useState(false);
+  const [exportingListId, setExportingListId] = useState<string | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
 
   // Set default tab based on stored lists once they're loaded
   useEffect(() => {
@@ -138,27 +149,51 @@ export const BatchOperationsTab: React.FC = () => {
     setUploadResult(null);
     setActiveStep(0);
     setSourceFileName(undefined);
+    setEditingListId(null); // Clear editing state when clearing
     clearCurrentList();
   };
 
   const handleSaveList = (formData: { name: string; description?: string }) => {
     if (receivers.length === 0) return;
 
-    const newList = createReceiverList(formData, receivers, sourceFileName);
-    setShowSaveDialog(false);
-    setSavedListId(newList.id);
+    // Check if we're editing an existing list
+    if (editingListId) {
+      // Update existing list
+      updateReceiverList(editingListId, formData, receivers);
+      setShowSaveDialog(false);
+      setSavedListId(editingListId);
+      setEditingListId(null); // Clear editing state
 
-    // Show success notification
-    setSuccessMessage(
-      `List "${newList.name}" saved successfully with ${newList.validReceivers} valid receivers!`
-    );
-    setShowSuccessMessage(true);
+      // Show success notification
+      setSuccessMessage(
+        `List "${formData.name}" updated successfully with ${receivers.filter((r) => r.isValid).length} valid receivers!`
+      );
+      setShowSuccessMessage(true);
 
-    // Show option to create job if profiles and templates are available
-    if (profiles.length > 0 && templates.length > 0) {
-      setTimeout(() => {
-        setShowJobDialog(true);
-      }, 1000);
+      // Show option to create job if profiles and templates are available
+      if (profiles.length > 0 && templates.length > 0) {
+        setTimeout(() => {
+          setShowJobDialog(true);
+        }, 1000);
+      }
+    } else {
+      // Create new list
+      const newList = createReceiverList(formData, receivers, sourceFileName);
+      setShowSaveDialog(false);
+      setSavedListId(newList.id);
+
+      // Show success notification
+      setSuccessMessage(
+        `List "${newList.name}" saved successfully with ${newList.validReceivers} valid receivers!`
+      );
+      setShowSuccessMessage(true);
+
+      // Show option to create job if profiles and templates are available
+      if (profiles.length > 0 && templates.length > 0) {
+        setTimeout(() => {
+          setShowJobDialog(true);
+        }, 1000);
+      }
     }
   };
 
@@ -221,6 +256,32 @@ export const BatchOperationsTab: React.FC = () => {
     }
   };
 
+  const handleEditStoredList = async (id: string) => {
+    const list = await loadReceiverList(id);
+    if (list) {
+      setAllReceivers(list.receivers);
+      setEditingListId(id); // Track that we're editing this list
+      setActiveTab(0); // Switch to upload/review tab
+      setActiveStep(1); // Go to review step
+      setUploadResult({
+        success: true,
+        data: [],
+        errors: [],
+        totalRows: list.totalReceivers,
+        validRows: list.validReceivers,
+      });
+      setSourceFileName(list.sourceFileName);
+      // Mark as initialized to prevent default tab logic from overriding
+      setHasInitializedTab(true);
+
+      // Show notification that list is loaded for editing
+      setSuccessMessage(
+        `List "${list.name}" loaded for editing. Make your changes and save when ready.`
+      );
+      setShowSuccessMessage(true);
+    }
+  };
+
   const handleDeleteStoredList = (id: string) => {
     setListToDelete(id);
     setShowDeleteConfirm(true);
@@ -245,6 +306,76 @@ export const BatchOperationsTab: React.FC = () => {
   const handleCancelDelete = () => {
     setListToDelete(null);
     setShowDeleteConfirm(false);
+  };
+
+  const handleBulkSend = async (profileId: string, templateId: string) => {
+    const profile = profiles.find((p) => p.id === profileId);
+    const template = getTemplate(templateId);
+
+    if (!profile || !template) {
+      showError('Profile or template not found');
+      return;
+    }
+
+    const validReceivers = receivers.filter((r) => r.isValid);
+    if (validReceivers.length === 0) {
+      showError('No valid receivers to send to');
+      return;
+    }
+
+    const result = await sendBulkEmails({
+      receivers: validReceivers,
+      template,
+      profile: {
+        fullName: profile.fullName,
+        smtpConfigId: profile.smtpConfigId,
+      },
+    });
+
+    if (result.success) {
+      setSuccessMessage(
+        `Successfully sent ${result.sent} email(s) to ${validReceivers.length} receiver(s)`
+      );
+      setShowSuccessMessage(true);
+      setShowBulkSendDialog(false);
+    } else if (result.sent > 0) {
+      setSuccessMessage(
+        `Sent ${result.sent} email(s), ${result.failed} failed`
+      );
+      setShowSuccessMessage(true);
+      setShowBulkSendDialog(false);
+    }
+  };
+
+  const handleExportList = (id: string) => {
+    setExportingListId(id);
+    setShowExportDialog(true);
+  };
+
+  const handleConfirmExport = async (includeInvalid: boolean) => {
+    if (!exportingListId) return;
+
+    setIsExporting(true);
+    try {
+      await new Promise<void>((resolve) => {
+        exportList(exportingListId, includeInvalid);
+        // Small delay to ensure export completes
+        setTimeout(() => {
+          resolve();
+        }, 500);
+      });
+
+      setSuccessMessage(
+        `List exported successfully${includeInvalid ? ' (including invalid receivers)' : ' (valid receivers only)'}`
+      );
+      setShowSuccessMessage(true);
+      setShowExportDialog(false);
+      setExportingListId(null);
+    } catch (error) {
+      showError('Failed to export list');
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const handleTabChange = (_: React.SyntheticEvent, newValue: number) => {
@@ -417,20 +548,33 @@ export const BatchOperationsTab: React.FC = () => {
                       >
                         Save List
                       </Button>
-                      {savedListId &&
-                        profiles.length > 0 &&
-                        templates.length > 0 && (
+                      {profiles.length > 0 && templates.length > 0 && (
+                        <>
                           <Button
-                            startIcon={<Work />}
-                            onClick={() => setShowJobDialog(true)}
+                            startIcon={<Send />}
+                            onClick={() => setShowBulkSendDialog(true)}
                             variant="contained"
-                            color="secondary"
+                            color="success"
                             fullWidth={false}
+                            disabled={isSending}
                             sx={{ width: { xs: '100%', sm: 'auto' } }}
                           >
-                            Create Email Job
+                            {isSending ? 'Sending...' : 'Send Now'}
                           </Button>
-                        )}
+                          {savedListId && (
+                            <Button
+                              startIcon={<Work />}
+                              onClick={() => setShowJobDialog(true)}
+                              variant="contained"
+                              color="secondary"
+                              fullWidth={false}
+                              sx={{ width: { xs: '100%', sm: 'auto' } }}
+                            >
+                              Create Email Job
+                            </Button>
+                          )}
+                        </>
+                      )}
                       <Button
                         startIcon={<Download />}
                         onClick={handleExportValid}
@@ -498,20 +642,34 @@ export const BatchOperationsTab: React.FC = () => {
           lists={lists}
           loading={listsLoading}
           onViewList={handleViewStoredList}
-          onEditList={(id) => console.log('Edit list:', id)} // TODO: Implement edit
+          onEditList={handleEditStoredList}
           onDeleteList={handleDeleteStoredList}
-          onExportList={exportList}
+          onExportList={handleExportList}
         />
       )}
 
       {/* Save List Dialog */}
       <SaveListDialog
         open={showSaveDialog}
-        onClose={() => setShowSaveDialog(false)}
+        onClose={() => {
+          setShowSaveDialog(false);
+          setEditingListId(null); // Clear editing state when closing
+        }}
         onSave={handleSaveList}
         sourceFileName={sourceFileName}
         receiverCount={receivers.length}
         validCount={receivers.filter((r) => r.isValid).length}
+        editingListId={editingListId}
+        existingListName={
+          editingListId
+            ? lists.find((l) => l.id === editingListId)?.name
+            : undefined
+        }
+        existingListDescription={
+          editingListId
+            ? lists.find((l) => l.id === editingListId)?.description
+            : undefined
+        }
       />
 
       {/* Success Notification */}
@@ -568,6 +726,38 @@ export const BatchOperationsTab: React.FC = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Bulk Send Dialog */}
+      <BulkSendDialog
+        open={showBulkSendDialog}
+        onClose={() => {
+          if (!isSending) {
+            setShowBulkSendDialog(false);
+          }
+        }}
+        onConfirm={handleBulkSend}
+        receivers={receivers}
+        isSending={isSending}
+        progress={progress}
+      />
+
+      {/* Export List Dialog */}
+      <ExportListDialog
+        open={showExportDialog}
+        onClose={() => {
+          if (!isExporting) {
+            setShowExportDialog(false);
+            setExportingListId(null);
+          }
+        }}
+        onExport={handleConfirmExport}
+        list={
+          exportingListId
+            ? lists.find((l) => l.id === exportingListId) || null
+            : null
+        }
+        isExporting={isExporting}
+      />
     </Box>
   );
 };

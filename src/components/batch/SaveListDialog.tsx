@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Save } from '@mui/icons-material';
 import {
   Button,
@@ -19,6 +19,9 @@ interface SaveListDialogProps {
   sourceFileName?: string;
   receiverCount: number;
   validCount: number;
+  editingListId?: string | null;
+  existingListName?: string;
+  existingListDescription?: string;
 }
 
 export const SaveListDialog: React.FC<SaveListDialogProps> = ({
@@ -28,12 +31,29 @@ export const SaveListDialog: React.FC<SaveListDialogProps> = ({
   sourceFileName,
   receiverCount,
   validCount,
+  editingListId,
+  existingListName,
+  existingListDescription,
 }) => {
   const [formData, setFormData] = useState<ReceiverListForm>({
-    name: sourceFileName ? sourceFileName.replace('.csv', '') : '',
-    description: '',
+    name:
+      existingListName ||
+      (sourceFileName ? sourceFileName.replace('.csv', '') : ''),
+    description: existingListDescription || '',
   });
   const [errors, setErrors] = useState<Partial<ReceiverListForm>>({});
+
+  // Update form data when dialog opens or editing list changes
+  useEffect(() => {
+    if (open) {
+      setFormData({
+        name:
+          existingListName ||
+          (sourceFileName ? sourceFileName.replace('.csv', '') : ''),
+        description: existingListDescription || '',
+      });
+    }
+  }, [open, existingListName, existingListDescription, sourceFileName]);
 
   const validateForm = (): boolean => {
     const newErrors: Partial<ReceiverListForm> = {};
@@ -62,8 +82,10 @@ export const SaveListDialog: React.FC<SaveListDialogProps> = ({
 
     // Reset form
     setFormData({
-      name: sourceFileName ? sourceFileName.replace('.csv', '') : '',
-      description: '',
+      name:
+        existingListName ||
+        (sourceFileName ? sourceFileName.replace('.csv', '') : ''),
+      description: existingListDescription || '',
     });
     setErrors({});
     onClose();
@@ -74,12 +96,18 @@ export const SaveListDialog: React.FC<SaveListDialogProps> = ({
     onClose();
   };
 
+  const isEditing = !!editingListId;
+
   return (
     <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
-      <DialogTitle>Save Receiver List</DialogTitle>
+      <DialogTitle>
+        {isEditing ? 'Update Receiver List' : 'Save Receiver List'}
+      </DialogTitle>
       <DialogContent>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-          Save the processed and validated receiver data for future use.
+          {isEditing
+            ? 'Update the receiver list with your changes.'
+            : 'Save the processed and validated receiver data for future use.'}
         </Typography>
 
         <Typography variant="body2" sx={{ mb: 2 }}>
@@ -129,7 +157,7 @@ export const SaveListDialog: React.FC<SaveListDialogProps> = ({
           startIcon={<Save />}
           disabled={!formData.name.trim()}
         >
-          Save List
+          {isEditing ? 'Update List' : 'Save List'}
         </Button>
       </DialogActions>
     </Dialog>
