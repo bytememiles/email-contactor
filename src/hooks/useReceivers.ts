@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import {
   DEFAULT_TAGS,
@@ -12,50 +12,75 @@ const STORAGE_KEY_TAGS = 'receiver_tags';
 
 export const useReceivers = () => {
   const [receivers, setReceivers] = useState<ProcessedReceiver[]>([]);
-  const [tags, setTags] = useState<ReceiverTag[]>(() => {
-    // Initialize with default tags
-    const storedTags = localStorage.getItem(STORAGE_KEY_TAGS);
-    if (storedTags) {
-      try {
-        return JSON.parse(storedTags).map((tag: unknown) => {
-          const tagData = tag as Omit<ReceiverTag, 'createdAt'> & {
-            createdAt: string;
-          };
-          return {
-            ...tagData,
-            createdAt: new Date(tagData.createdAt),
-          };
-        });
-      } catch {
-        // Fall back to default tags if parsing fails
-      }
-    }
+  const [tags, setTags] = useState<ReceiverTag[]>([]);
 
-    // Create default tags with IDs and timestamps
-    return DEFAULT_TAGS.map((tag) => ({
-      ...tag,
-      id: crypto.randomUUID(),
-      createdAt: new Date(),
-    }));
-  });
+  // Load tags from localStorage on mount (client-side only)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    try {
+      const storedTags = localStorage.getItem(STORAGE_KEY_TAGS);
+      if (storedTags) {
+        try {
+          const parsedTags = JSON.parse(storedTags).map((tag: unknown) => {
+            const tagData = tag as Omit<ReceiverTag, 'createdAt'> & {
+              createdAt: string;
+            };
+            return {
+              ...tagData,
+              createdAt: new Date(tagData.createdAt),
+            };
+          });
+          setTags(parsedTags);
+          return;
+        } catch {
+          // Fall back to default tags if parsing fails
+        }
+      }
+
+      // Create default tags with IDs and timestamps
+      const defaultTags = DEFAULT_TAGS.map((tag) => ({
+        ...tag,
+        id: crypto.randomUUID(),
+        createdAt: new Date(),
+      }));
+      setTags(defaultTags);
+    } catch (error) {
+      console.error('Error loading tags:', error);
+      // Fall back to default tags on error
+      const defaultTags = DEFAULT_TAGS.map((tag) => ({
+        ...tag,
+        id: crypto.randomUUID(),
+        createdAt: new Date(),
+      }));
+      setTags(defaultTags);
+    }
+  }, []);
 
   // Save tags to localStorage whenever they change
   const saveTags = useCallback((newTags: ReceiverTag[]) => {
-    try {
-      localStorage.setItem(STORAGE_KEY_TAGS, JSON.stringify(newTags));
-      setTags(newTags);
-    } catch (error) {
-      console.error('Error saving tags:', error);
+    setTags(newTags);
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(STORAGE_KEY_TAGS, JSON.stringify(newTags));
+      } catch (error) {
+        console.error('Error saving tags:', error);
+      }
     }
   }, []);
 
   // Save receivers to localStorage whenever they change
   const saveReceivers = useCallback((newReceivers: ProcessedReceiver[]) => {
-    try {
-      localStorage.setItem(STORAGE_KEY_RECEIVERS, JSON.stringify(newReceivers));
-      setReceivers(newReceivers);
-    } catch (error) {
-      console.error('Error saving receivers:', error);
+    setReceivers(newReceivers);
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(
+          STORAGE_KEY_RECEIVERS,
+          JSON.stringify(newReceivers)
+        );
+      } catch (error) {
+        console.error('Error saving receivers:', error);
+      }
     }
   }, []);
 
@@ -210,7 +235,9 @@ export const useReceivers = () => {
   // Clear all receivers
   const clearReceivers = useCallback(() => {
     setReceivers([]);
-    localStorage.removeItem(STORAGE_KEY_RECEIVERS);
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem(STORAGE_KEY_RECEIVERS);
+    }
   }, []);
 
   // Get receivers by tag

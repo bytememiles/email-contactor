@@ -43,7 +43,7 @@ const statusConfig: Record<
       | 'info'
       | 'success'
       | 'warning';
-    icon: React.ReactNode;
+    icon: React.ReactElement;
   }
 > = {
   pending: { label: 'Pending', color: 'default', icon: <Pending /> },

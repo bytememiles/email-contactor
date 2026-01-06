@@ -292,7 +292,7 @@ export const useReceiverLists = () => {
         URL.revokeObjectURL(url);
       });
     },
-    [getListSummary, loadReceiverList]
+    [getListSummary, loadReceiverList, showWarning]
   );
 
   // Expose summaries as 'lists' for backward compatibility with components
