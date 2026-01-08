@@ -27,7 +27,6 @@ import {
 
 import { ProcessedReceiver } from '@/types/receiver';
 import {
-  formatTimezone,
   getCurrentTimeInTimezone,
   getTimezoneAbbreviation,
 } from '@/utils/csvUtils';

@@ -186,7 +186,6 @@ export const BatchOperationsTab: React.FC = () => {
       // Prepare all lists data for batch creation
       const listsData = Array.from(receiversByTimezoneAbbr.entries()).map(
         ([tzAbbreviation, tzReceivers]) => {
-          const ianaTimezone = timezoneAbbrToIana.get(tzAbbreviation) || 'UTC';
           const listName = `${formData.name}_${tzAbbreviation}`;
           const listDescription = formData.description
             ? `${formData.description} (${tzAbbreviation})`
@@ -204,7 +203,7 @@ export const BatchOperationsTab: React.FC = () => {
       );
 
       // Create all lists at once using batch function
-      const createdLists = createReceiverListsBatch(listsData);
+      createReceiverListsBatch(listsData);
 
       setShowSaveDialog(false);
       setEditingListId(null);
@@ -348,6 +347,7 @@ export const BatchOperationsTab: React.FC = () => {
     });
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleViewJob = (jobId: string) => {
     // Navigate to the jobs page
     router.push('/settings/jobs');
