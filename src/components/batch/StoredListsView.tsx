@@ -317,15 +317,33 @@ export const StoredListsView: React.FC<StoredListsViewProps> = ({
 
                 <Box sx={{ flex: 1 }} />
 
-                <Tooltip title="Delete list">
-                  <IconButton
-                    size="small"
-                    onClick={() => onDeleteList(list.id)}
-                    color="error"
-                  >
-                    <Delete />
-                  </IconButton>
-                </Tooltip>
+                {(() => {
+                  const linkedJobs = jobs.filter(
+                    (job) => job.receiverListId === list.id
+                  );
+                  const hasLinkedJobs = linkedJobs.length > 0;
+
+                  return (
+                    <Tooltip
+                      title={
+                        hasLinkedJobs
+                          ? `Cannot delete: ${linkedJobs.length} job(s) linked to this list`
+                          : 'Delete list'
+                      }
+                    >
+                      <span>
+                        <IconButton
+                          size="small"
+                          onClick={() => onDeleteList(list.id)}
+                          color="error"
+                          disabled={hasLinkedJobs}
+                        >
+                          <Delete />
+                        </IconButton>
+                      </span>
+                    </Tooltip>
+                  );
+                })()}
               </CardActions>
 
               {/* Job Section */}

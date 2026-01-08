@@ -406,6 +406,20 @@ export const BatchOperationsTab: React.FC = () => {
 
   const handleConfirmDelete = () => {
     if (listToDelete) {
+      // Check if there are any jobs linked to this list
+      const linkedJobs = jobs.filter(
+        (job) => job.receiverListId === listToDelete
+      );
+
+      if (linkedJobs.length > 0) {
+        showWarning(
+          `Cannot delete list: ${linkedJobs.length} job(s) are linked to this list. Please delete or update the linked jobs first.`
+        );
+        setListToDelete(null);
+        setShowDeleteConfirm(false);
+        return;
+      }
+
       const listToDeleteData = lists.find((list) => list.id === listToDelete);
       deleteReceiverList(listToDelete);
       setListToDelete(null);
@@ -910,6 +924,11 @@ export const BatchOperationsTab: React.FC = () => {
           listToDelete
             ? lists.find((list) => list.id === listToDelete) || null
             : null
+        }
+        linkedJobs={
+          listToDelete
+            ? jobs.filter((job) => job.receiverListId === listToDelete)
+            : []
         }
       />
 

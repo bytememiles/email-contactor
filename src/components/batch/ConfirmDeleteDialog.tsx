@@ -1,8 +1,9 @@
 import React from 'react';
-import { Delete, Warning } from '@mui/icons-material';
+import { Delete, Warning, Work } from '@mui/icons-material';
 import {
   Box,
   Button,
+  Chip,
   Dialog,
   DialogActions,
   DialogContent,
@@ -10,6 +11,7 @@ import {
   Typography,
 } from '@mui/material';
 
+import { EmailJob } from '@/types/job';
 import { ReceiverListSummary } from '@/types/receiver';
 
 interface ConfirmDeleteDialogProps {
@@ -17,6 +19,7 @@ interface ConfirmDeleteDialogProps {
   onClose: () => void;
   onConfirm: () => void;
   list: ReceiverListSummary | null;
+  linkedJobs?: EmailJob[];
 }
 
 export const ConfirmDeleteDialog: React.FC<ConfirmDeleteDialogProps> = ({
@@ -24,11 +27,14 @@ export const ConfirmDeleteDialog: React.FC<ConfirmDeleteDialogProps> = ({
   onClose,
   onConfirm,
   list,
+  linkedJobs = [],
 }) => {
   const handleConfirm = () => {
     onConfirm();
     onClose();
   };
+
+  const hasLinkedJobs = linkedJobs.length > 0;
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
@@ -97,10 +103,52 @@ export const ConfirmDeleteDialog: React.FC<ConfirmDeleteDialogProps> = ({
               </Typography>
             </Box>
 
-            <Typography variant="body2" color="warning.main" sx={{ mt: 2 }}>
-              <strong>Warning:</strong> This action cannot be undone. All
-              receiver data will be permanently lost.
-            </Typography>
+            {hasLinkedJobs && (
+              <Box
+                sx={{
+                  mt: 2,
+                  p: 2,
+                  bgcolor: 'error.50',
+                  borderRadius: 1,
+                  border: '1px solid',
+                  borderColor: 'error.200',
+                }}
+              >
+                <Box
+                  sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}
+                >
+                  <Work color="error" />
+                  <Typography variant="subtitle2" color="error.main">
+                    <strong>Cannot Delete: Linked Jobs Found</strong>
+                  </Typography>
+                </Box>
+                <Typography variant="body2" color="error.main" gutterBottom>
+                  This list is linked to {linkedJobs.length} job(s). Please
+                  delete or update the linked jobs before deleting this list.
+                </Typography>
+                <Box
+                  sx={{ mt: 1.5, display: 'flex', flexWrap: 'wrap', gap: 1 }}
+                >
+                  {linkedJobs.map((job) => (
+                    <Chip
+                      key={job.id}
+                      icon={<Work />}
+                      label={`Job ${job.id.slice(0, 8)}... (${job.status})`}
+                      size="small"
+                      color="error"
+                      variant="outlined"
+                    />
+                  ))}
+                </Box>
+              </Box>
+            )}
+
+            {!hasLinkedJobs && (
+              <Typography variant="body2" color="warning.main" sx={{ mt: 2 }}>
+                <strong>Warning:</strong> This action cannot be undone. All
+                receiver data will be permanently lost.
+              </Typography>
+            )}
           </Box>
         )}
       </DialogContent>
@@ -120,6 +168,7 @@ export const ConfirmDeleteDialog: React.FC<ConfirmDeleteDialogProps> = ({
           variant="contained"
           color="error"
           startIcon={<Delete />}
+          disabled={hasLinkedJobs}
         >
           Delete List
         </Button>
