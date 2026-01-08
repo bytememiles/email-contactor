@@ -122,6 +122,8 @@ export const BatchOperationsTab: React.FC = () => {
     setLoading(true);
     setUploadResult(result);
     setSourceFileName(fileName);
+    setEditingListId(null); // Clear editing state when uploading new CSV
+    setSaveMode('save'); // Reset to default save mode
 
     if (result.success && result.data.length > 0) {
       try {
@@ -150,6 +152,7 @@ export const BatchOperationsTab: React.FC = () => {
     setActiveStep(0);
     setSourceFileName(undefined);
     setEditingListId(null); // Clear editing state when clearing
+    setSaveMode('save'); // Reset to default save mode
     clearCurrentList();
   };
 
@@ -376,6 +379,7 @@ export const BatchOperationsTab: React.FC = () => {
     if (list) {
       setAllReceivers(list.receivers);
       setEditingListId(id); // Track that we're editing this list
+      setSaveMode('saveAsCopy'); // Default to "Save as Copy" when editing from saved list
       setActiveTab(0); // Switch to upload/review tab
       setActiveStep(1); // Go to review step
       setUploadResult({
@@ -391,7 +395,7 @@ export const BatchOperationsTab: React.FC = () => {
 
       // Show notification that list is loaded for editing
       setSuccessMessage(
-        `List "${list.name}" loaded for editing. Make your changes and save when ready.`
+        `List "${list.name}" loaded for editing. Use "Save as Copy" to create a new list with your changes.`
       );
       setShowSuccessMessage(true);
     }
@@ -706,26 +710,31 @@ export const BatchOperationsTab: React.FC = () => {
                           open={Boolean(saveMenuAnchor)}
                           onClose={handleSaveMenuClose}
                         >
-                          <MenuItem
-                            onClick={() => {
-                              handleSaveMenuClose();
-                              setSaveMode('save');
-                              setShowSaveDialog(true);
-                            }}
-                          >
-                            <Save sx={{ mr: 1 }} />
-                            Save
-                          </MenuItem>
-                          <MenuItem
-                            onClick={() => {
-                              handleSaveMenuClose();
-                              setSaveMode('saveAsCopy');
-                              setShowSaveDialog(true);
-                            }}
-                          >
-                            <Save sx={{ mr: 1 }} />
-                            Save as Copy
-                          </MenuItem>
+                          {!editingListId && (
+                            <MenuItem
+                              onClick={() => {
+                                handleSaveMenuClose();
+                                setSaveMode('save');
+                                setShowSaveDialog(true);
+                              }}
+                            >
+                              <Save sx={{ mr: 1 }} />
+                              Save
+                            </MenuItem>
+                          )}
+                          {editingListId && (
+                            <MenuItem
+                              onClick={() => {
+                                handleSaveMenuClose();
+                                setSaveMode('saveAsCopy');
+                                setShowSaveDialog(true);
+                              }}
+                              selected={saveMode === 'saveAsCopy'}
+                            >
+                              <Save sx={{ mr: 1 }} />
+                              Save as Copy
+                            </MenuItem>
+                          )}
                           <MenuItem
                             onClick={() => {
                               handleSaveMenuClose();
