@@ -950,6 +950,13 @@ export const BatchOperationsTab: React.FC = () => {
                 setShowJobDialog(false);
                 setSavedListId(null);
               }}
+              initialData={{
+                profileId: '',
+                templateId: '',
+                receiverListId: savedListId,
+                sendTime: '10:00',
+              }}
+              hideReceiverList={true}
             />
           )}
         </DialogContent>

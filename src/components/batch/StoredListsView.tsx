@@ -196,6 +196,7 @@ export const StoredListsView: React.FC<StoredListsViewProps> = ({
               md: 'repeat(3, 1fr)',
             },
             gap: 3,
+            pb: 3, // Add bottom padding so cards aren't cut off
           }}
         >
           {filteredLists.map((list) => (
@@ -393,6 +394,7 @@ export const StoredListsView: React.FC<StoredListsViewProps> = ({
                           alignItems: 'center',
                           gap: 1,
                           mb: 1,
+                          mt: 1.5, // Add gap between divider and status section
                         }}
                       >
                         <Chip
@@ -413,6 +415,7 @@ export const StoredListsView: React.FC<StoredListsViewProps> = ({
                           startIcon={<Work />}
                           onClick={() => onViewJob(existingJob.id)}
                           fullWidth
+                          sx={{ mt: 1.5 }} // Add gap between divider and button
                         >
                           View Job
                         </Button>
@@ -437,6 +440,7 @@ export const StoredListsView: React.FC<StoredListsViewProps> = ({
                         startIcon={<Work />}
                         onClick={() => onCreateJob(list.id)}
                         fullWidth
+                        sx={{ mt: 1.5 }} // Add gap between divider and button
                       >
                         Create Job
                       </Button>
@@ -462,6 +466,7 @@ export const StoredListsView: React.FC<StoredListsViewProps> = ({
                             startIcon={<Work />}
                             disabled
                             fullWidth
+                            sx={{ mt: 1.5 }} // Add gap between divider and button
                           >
                             Create Job (Multiple Timezones)
                           </Button>

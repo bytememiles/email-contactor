@@ -25,6 +25,7 @@ interface JobCreatorProps {
   onCancel: () => void;
   initialData?: JobForm;
   mode?: 'create' | 'edit';
+  hideReceiverList?: boolean; // Hide receiver list dropdown when pre-selected
 }
 
 export const JobCreator: React.FC<JobCreatorProps> = ({
@@ -35,6 +36,7 @@ export const JobCreator: React.FC<JobCreatorProps> = ({
   onCancel,
   initialData,
   mode = 'create',
+  hideReceiverList = false,
 }) => {
   // Extract time from scheduledTime if editing
   const getInitialSendTime = (): string => {
@@ -101,7 +103,8 @@ export const JobCreator: React.FC<JobCreatorProps> = ({
       newErrors.templateId = 'Template is required';
     }
 
-    if (!formData.receiverListId) {
+    // Only validate receiverListId if the field is shown
+    if (!hideReceiverList && !formData.receiverListId) {
       newErrors.receiverListId = 'Receiver list is required';
     }
 
@@ -209,36 +212,61 @@ export const JobCreator: React.FC<JobCreatorProps> = ({
         )}
       </FormControl>
 
-      <FormControl
-        fullWidth
-        margin="normal"
-        required
-        error={!!errors.receiverListId}
-      >
-        <InputLabel>Receiver List</InputLabel>
-        <Select
-          value={formData.receiverListId}
-          onChange={(e) =>
-            setFormData((prev) => ({ ...prev, receiverListId: e.target.value }))
-          }
-          label="Receiver List"
+      {!hideReceiverList && (
+        <FormControl
+          fullWidth
+          margin="normal"
+          required
+          error={!!errors.receiverListId}
         >
-          {receiverLists.map((list) => (
-            <MenuItem key={list.id} value={list.id}>
-              {list.name} ({list.validReceivers} valid receivers)
-            </MenuItem>
-          ))}
-        </Select>
-        {errors.receiverListId && (
-          <Typography
-            variant="caption"
-            color="error"
-            sx={{ mt: 0.5, ml: 1.75 }}
+          <InputLabel>Receiver List</InputLabel>
+          <Select
+            value={formData.receiverListId}
+            onChange={(e) =>
+              setFormData((prev) => ({
+                ...prev,
+                receiverListId: e.target.value,
+              }))
+            }
+            label="Receiver List"
           >
-            {errors.receiverListId}
+            {receiverLists.map((list) => (
+              <MenuItem key={list.id} value={list.id}>
+                {list.name} ({list.validReceivers} valid receivers)
+              </MenuItem>
+            ))}
+          </Select>
+          {errors.receiverListId && (
+            <Typography
+              variant="caption"
+              color="error"
+              sx={{ mt: 0.5, ml: 1.75 }}
+            >
+              {errors.receiverListId}
+            </Typography>
+          )}
+        </FormControl>
+      )}
+
+      {hideReceiverList && receiverLists.length > 0 && (
+        <Box
+          sx={{
+            mt: 2,
+            mb: 1,
+            p: 1.5,
+            bgcolor: 'action.hover',
+            borderRadius: 1,
+          }}
+        >
+          <Typography variant="body2" color="text.secondary" gutterBottom>
+            Receiver List:
           </Typography>
-        )}
-      </FormControl>
+          <Typography variant="body1" sx={{ fontWeight: 500 }}>
+            {receiverLists[0].name} ({receiverLists[0].validReceivers} valid
+            receivers)
+          </Typography>
+        </Box>
+      )}
 
       <TextField
         fullWidth
