@@ -197,6 +197,7 @@ export default function JobsPage() {
           onEdit={handleEditJob}
           profileNames={profileNames}
           templateNames={templateNames}
+          loadReceiverList={loadReceiverList}
         />
       )}
 

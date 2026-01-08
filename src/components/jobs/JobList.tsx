@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   CheckCircle,
@@ -22,6 +22,8 @@ import {
 } from '@mui/material';
 
 import { EmailJob, JobStatus } from '@/types/job';
+import { ReceiverList } from '@/types/receiver';
+import { getTimezoneAbbreviation } from '@/utils/csvUtils';
 
 interface JobListProps {
   jobs: EmailJob[];
@@ -29,6 +31,7 @@ interface JobListProps {
   onEdit?: (job: EmailJob) => void;
   profileNames: Record<string, string>;
   templateNames: Record<string, string>;
+  loadReceiverList: (id: string) => Promise<ReceiverList | null>;
 }
 
 const statusConfig: Record<
@@ -59,8 +62,41 @@ export const JobList: React.FC<JobListProps> = ({
   onEdit,
   profileNames,
   templateNames,
+  loadReceiverList,
 }) => {
   const router = useRouter();
+  const [receiverLists, setReceiverLists] = useState<
+    Record<string, ReceiverList>
+  >({});
+  const loadingRef = useRef<Set<string>>(new Set());
+  const loadedIdsRef = useRef<Set<string>>(new Set());
+
+  // Load receiver lists for all jobs
+  useEffect(() => {
+    const loadLists = async () => {
+      const lists: Record<string, ReceiverList> = {};
+      const jobIds = new Set(jobs.map((job) => job.receiverListId));
+      const jobsToLoad = Array.from(jobIds).filter(
+        (id) => !loadedIdsRef.current.has(id) && !loadingRef.current.has(id)
+      );
+
+      for (const listId of jobsToLoad) {
+        loadingRef.current.add(listId);
+        const list = await loadReceiverList(listId);
+        if (list) {
+          lists[listId] = list;
+          loadedIdsRef.current.add(listId);
+        }
+        loadingRef.current.delete(listId);
+      }
+
+      if (Object.keys(lists).length > 0) {
+        setReceiverLists((prev) => ({ ...prev, ...lists }));
+      }
+    };
+    loadLists();
+  }, [jobs, loadReceiverList]);
+
   if (jobs.length === 0) {
     return (
       <Box sx={{ textAlign: 'center', py: 4 }}>
@@ -79,6 +115,53 @@ export const JobList: React.FC<JobListProps> = ({
           job.totalCount > 0
             ? ((job.sentCount + job.failedCount) / job.totalCount) * 100
             : 0;
+
+        // Get receiver list and timezone info
+        const receiverList = receiverLists[job.receiverListId];
+        const receivers = receiverList?.receivers || [];
+
+        // Get unique timezone abbreviation (should be single for jobs)
+        const uniqueTimezoneAbbrs = new Set(
+          receivers
+            .map((r) =>
+              r.timezone ? getTimezoneAbbreviation(r.timezone) : null
+            )
+            .filter(Boolean)
+        );
+        const jobTimezoneAbbr =
+          uniqueTimezoneAbbrs.size === 1
+            ? Array.from(uniqueTimezoneAbbrs)[0]
+            : null;
+        const jobTimezone = receivers.find((r) => r.timezone)?.timezone || null;
+
+        // Format scheduled time in system timezone
+        const systemTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        const systemTimezoneAbbr = getTimezoneAbbreviation(systemTimezone);
+        const scheduledTimeSystem = new Date(job.scheduledTime).toLocaleString(
+          'en-US',
+          {
+            timeZone: systemTimezone,
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true,
+          }
+        );
+
+        // Format scheduled time in job's timezone (if available)
+        const scheduledTimeJob = jobTimezone
+          ? new Date(job.scheduledTime).toLocaleString('en-US', {
+              timeZone: jobTimezone,
+              month: 'short',
+              day: 'numeric',
+              year: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit',
+              hour12: true,
+            })
+          : null;
 
         return (
           <Card key={job.id} sx={{ mb: 2 }}>
@@ -106,10 +189,35 @@ export const JobList: React.FC<JobListProps> = ({
                       color={config.color}
                       size="small"
                     />
-                    <Typography variant="body2" color="text.secondary">
-                      {new Date(job.scheduledTime).toLocaleString()}
-                    </Typography>
                   </Box>
+
+                  {/* Scheduled Time Section */}
+                  <Box sx={{ mb: 1 }}>
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      sx={{ fontWeight: 600, display: 'block', mb: 0.5 }}
+                    >
+                      Scheduled Time:
+                    </Typography>
+                    <Typography
+                      variant="body2"
+                      color="text.primary"
+                      sx={{ mb: 0.25 }}
+                    >
+                      {scheduledTimeSystem} ({systemTimezoneAbbr})
+                    </Typography>
+                    {scheduledTimeJob && jobTimezoneAbbr && (
+                      <Typography
+                        variant="body2"
+                        color="text.secondary"
+                        sx={{ fontSize: '0.75rem' }}
+                      >
+                        {scheduledTimeJob} ({jobTimezoneAbbr})
+                      </Typography>
+                    )}
+                  </Box>
+
                   <Typography variant="body2" color="text.secondary">
                     Profile: {profileNames[job.profileId] || 'Unknown'} •
                     Template: {templateNames[job.templateId] || 'Unknown'}

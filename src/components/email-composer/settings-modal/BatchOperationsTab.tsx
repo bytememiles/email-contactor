@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   ArrowDropDown,
   Clear,
@@ -55,6 +56,7 @@ import { getTimezoneAbbreviation, processReceivers } from '@/utils/csvUtils';
 import { calculateSendTimes, getEarliestSendTime } from '@/utils/scheduling';
 
 export const BatchOperationsTab: React.FC = () => {
+  const router = useRouter();
   const { showError, showWarning } = useNotification();
   const { receivers, setAllReceivers, deleteReceiver, clearReceivers } =
     useReceivers();
@@ -347,12 +349,8 @@ export const BatchOperationsTab: React.FC = () => {
   };
 
   const handleViewJob = (jobId: string) => {
-    // Note: Navigation would require useRouter from next/navigation
-    // For now, show a message with job ID
-    setSuccessMessage(
-      `Job ID: ${jobId}. Navigate to Jobs page to view details.`
-    );
-    setShowSuccessMessage(true);
+    // Navigate to the jobs page
+    router.push('/settings/jobs');
   };
 
   const handleViewStoredList = async (id: string) => {
