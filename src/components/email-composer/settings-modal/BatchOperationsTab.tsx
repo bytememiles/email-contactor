@@ -50,8 +50,8 @@ import { useReceiverLists } from '@/hooks/useReceiverLists';
 import { useReceivers } from '@/hooks/useReceivers';
 import { useTemplates } from '@/hooks/useTemplates';
 import { JobForm } from '@/types/job';
-import { CSVUploadResult } from '@/types/receiver';
-import { processReceivers } from '@/utils/csvUtils';
+import { CSVUploadResult, ProcessedReceiver } from '@/types/receiver';
+import { getTimezoneAbbreviation, processReceivers } from '@/utils/csvUtils';
 import { calculateSendTimes, getEarliestSendTime } from '@/utils/scheduling';
 
 export const BatchOperationsTab: React.FC = () => {
@@ -63,6 +63,7 @@ export const BatchOperationsTab: React.FC = () => {
     lists,
     loading: listsLoading,
     createReceiverList,
+    createReceiverListsBatch,
     updateReceiverList,
     deleteReceiverList,
     loadReceiverList,
@@ -72,7 +73,7 @@ export const BatchOperationsTab: React.FC = () => {
 
   const { profiles } = useProfiles();
   const { templates, getTemplate } = useTemplates();
-  const { createJob } = useEmailJobs();
+  const { createJob, jobs } = useEmailJobs();
   const { sendBulkEmails, isSending, progress } = useBulkEmailSender();
 
   const [activeTab, setActiveTab] = useState(0);
@@ -99,7 +100,9 @@ export const BatchOperationsTab: React.FC = () => {
     null
   );
   const [selectedReceiverIds, setSelectedReceiverIds] = useState<string[]>([]);
-  const [saveMode, setSaveMode] = useState<'save' | 'saveAsCopy'>('save');
+  const [saveMode, setSaveMode] = useState<
+    'save' | 'saveAsCopy' | 'saveByTimezone'
+  >('save');
 
   // Set default tab based on stored lists once they're loaded
   useEffect(() => {
@@ -152,9 +155,63 @@ export const BatchOperationsTab: React.FC = () => {
 
   const handleSaveList = (
     formData: { name: string; description?: string },
-    saveMode: 'save' | 'saveAsCopy' = 'save'
+    saveMode: 'save' | 'saveAsCopy' | 'saveByTimezone' = 'save'
   ) => {
     if (receivers.length === 0) return;
+
+    // Handle save by timezone
+    if (saveMode === 'saveByTimezone') {
+      // Group receivers by timezone abbreviation (MST, EST, CST, etc.) instead of IANA timezone
+      const receiversByTimezoneAbbr = new Map<string, ProcessedReceiver[]>();
+      const timezoneAbbrToIana = new Map<string, string>(); // Track IANA timezone for description
+
+      receivers.forEach((receiver) => {
+        const ianaTimezone = receiver.timezone || 'UTC';
+        const tzAbbreviation = getTimezoneAbbreviation(ianaTimezone);
+
+        // Group by abbreviation
+        if (!receiversByTimezoneAbbr.has(tzAbbreviation)) {
+          receiversByTimezoneAbbr.set(tzAbbreviation, []);
+          // Store the first IANA timezone we encounter for this abbreviation (for description)
+          timezoneAbbrToIana.set(tzAbbreviation, ianaTimezone);
+        }
+        receiversByTimezoneAbbr.get(tzAbbreviation)!.push(receiver);
+      });
+
+      // Prepare all lists data for batch creation
+      const listsData = Array.from(receiversByTimezoneAbbr.entries()).map(
+        ([tzAbbreviation, tzReceivers]) => {
+          const ianaTimezone = timezoneAbbrToIana.get(tzAbbreviation) || 'UTC';
+          const listName = `${formData.name}_${tzAbbreviation}`;
+          const listDescription = formData.description
+            ? `${formData.description} (${tzAbbreviation})`
+            : `Receivers in ${tzAbbreviation} timezone`;
+
+          return {
+            formData: {
+              name: listName,
+              description: listDescription,
+            },
+            receivers: tzReceivers,
+            sourceFileName,
+          };
+        }
+      );
+
+      // Create all lists at once using batch function
+      const createdLists = createReceiverListsBatch(listsData);
+
+      setShowSaveDialog(false);
+      setEditingListId(null);
+
+      // Show success notification
+      const totalValid = receivers.filter((r) => r.isValid).length;
+      setSuccessMessage(
+        `Saved ${receiversByTimezoneAbbr.size} list(s) by timezone with ${totalValid} total valid receivers!`
+      );
+      setShowSuccessMessage(true);
+      return;
+    }
 
     // Check if we're editing an existing list
     if (editingListId && saveMode === 'save') {
@@ -169,13 +226,6 @@ export const BatchOperationsTab: React.FC = () => {
         `List "${formData.name}" updated successfully with ${receivers.filter((r) => r.isValid).length} valid receivers!`
       );
       setShowSuccessMessage(true);
-
-      // Show option to create job if profiles and templates are available
-      if (profiles.length > 0 && templates.length > 0) {
-        setTimeout(() => {
-          setShowJobDialog(true);
-        }, 1000);
-      }
     } else {
       // Create new list (either new list or save as copy)
       const newList = createReceiverList(formData, receivers, sourceFileName);
@@ -188,13 +238,6 @@ export const BatchOperationsTab: React.FC = () => {
         `List "${newList.name}" ${saveMode === 'saveAsCopy' ? 'saved as copy' : 'saved'} successfully with ${newList.validReceivers} valid receivers!`
       );
       setShowSuccessMessage(true);
-
-      // Show option to create job if profiles and templates are available
-      if (profiles.length > 0 && templates.length > 0) {
-        setTimeout(() => {
-          setShowJobDialog(true);
-        }, 1000);
-      }
     }
   };
 
@@ -207,18 +250,32 @@ export const BatchOperationsTab: React.FC = () => {
   };
 
   const handleCreateJob = (jobData: JobForm) => {
-    if (!savedListId) return;
+    const listId = savedListId || jobData.receiverListId;
+    if (!listId) return;
 
-    const receiverList = lists.find((list) => list.id === savedListId);
+    const receiverList = lists.find((list) => list.id === listId);
     if (!receiverList) {
       showError('Receiver list not found');
       return;
     }
 
-    // Load the full list to get receivers for scheduling
-    loadReceiverList(savedListId).then((fullList) => {
+    // Load the full list to get receivers for scheduling and validation
+    loadReceiverList(listId).then((fullList) => {
       if (!fullList) {
         showError('Could not load receiver list');
+        return;
+      }
+
+      // Validate that the list has only one timezone abbreviation (MST, EST, etc.)
+      const uniqueTimezoneAbbrs = new Set(
+        fullList.receivers
+          .map((r) => (r.timezone ? getTimezoneAbbreviation(r.timezone) : null))
+          .filter(Boolean)
+      );
+      if (uniqueTimezoneAbbrs.size !== 1) {
+        showError(
+          'Jobs can only be created for receiver lists with a single timezone. This list contains multiple timezones.'
+        );
         return;
       }
 
@@ -244,6 +301,55 @@ export const BatchOperationsTab: React.FC = () => {
       );
       setShowSuccessMessage(true);
     });
+  };
+
+  const handleCreateJobFromList = (listId: string) => {
+    const receiverList = lists.find((list) => list.id === listId);
+    if (!receiverList) {
+      showError('Receiver list not found');
+      return;
+    }
+
+    // Load the full list to validate single timezone
+    loadReceiverList(listId).then((fullList) => {
+      if (!fullList) {
+        showError('Could not load receiver list');
+        return;
+      }
+
+      // Validate that the list has only one timezone abbreviation (MST, EST, etc.)
+      const uniqueTimezoneAbbrs = new Set(
+        fullList.receivers
+          .map((r) => (r.timezone ? getTimezoneAbbreviation(r.timezone) : null))
+          .filter(Boolean)
+      );
+      if (uniqueTimezoneAbbrs.size !== 1) {
+        showError(
+          'Jobs can only be created for receiver lists with a single timezone. This list contains multiple timezones.'
+        );
+        return;
+      }
+
+      // Check if profiles and templates are available
+      if (profiles.length === 0 || templates.length === 0) {
+        showError(
+          'Please create at least one profile and template before creating a job'
+        );
+        return;
+      }
+
+      setSavedListId(listId);
+      setShowJobDialog(true);
+    });
+  };
+
+  const handleViewJob = (jobId: string) => {
+    // Note: Navigation would require useRouter from next/navigation
+    // For now, show a message with job ID
+    setSuccessMessage(
+      `Job ID: ${jobId}. Navigate to Jobs page to view details.`
+    );
+    setShowSuccessMessage(true);
   };
 
   const handleViewStoredList = async (id: string) => {
@@ -620,6 +726,18 @@ export const BatchOperationsTab: React.FC = () => {
                             <Save sx={{ mr: 1 }} />
                             Save as Copy
                           </MenuItem>
+                          <MenuItem
+                            onClick={() => {
+                              handleSaveMenuClose();
+                              // For save by timezone, we need a base name
+                              // Show dialog but with special handling
+                              setSaveMode('saveByTimezone');
+                              setShowSaveDialog(true);
+                            }}
+                          >
+                            <Folder sx={{ mr: 1 }} />
+                            Save by Timezone
+                          </MenuItem>
                         </Menu>
                       </Box>
                       {profiles.length > 0 && templates.length > 0 && (
@@ -728,6 +846,10 @@ export const BatchOperationsTab: React.FC = () => {
           onEditList={handleEditStoredList}
           onDeleteList={handleDeleteStoredList}
           onExportList={handleExportList}
+          onLoadList={loadReceiverList}
+          onCreateJob={handleCreateJobFromList}
+          onViewJob={handleViewJob}
+          jobs={jobs}
         />
       )}
 

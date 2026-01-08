@@ -15,14 +15,17 @@ import { ReceiverListForm } from '@/types/receiver';
 interface SaveListDialogProps {
   open: boolean;
   onClose: () => void;
-  onSave: (formData: ReceiverListForm, saveMode: 'save' | 'saveAsCopy') => void;
+  onSave: (
+    formData: ReceiverListForm,
+    saveMode: 'save' | 'saveAsCopy' | 'saveByTimezone'
+  ) => void;
   sourceFileName?: string;
   receiverCount: number;
   validCount: number;
   editingListId?: string | null;
   existingListName?: string;
   existingListDescription?: string;
-  saveMode?: 'save' | 'saveAsCopy';
+  saveMode?: 'save' | 'saveAsCopy' | 'saveByTimezone';
 }
 
 export const SaveListDialog: React.FC<SaveListDialogProps> = ({
@@ -117,7 +120,9 @@ export const SaveListDialog: React.FC<SaveListDialogProps> = ({
           ? 'Update Receiver List'
           : isSaveAsCopy
             ? 'Save Receiver List (Copy)'
-            : 'Save Receiver List'}
+            : saveMode === 'saveByTimezone'
+              ? 'Save Receiver Lists by Timezone'
+              : 'Save Receiver List'}
       </DialogTitle>
       <DialogContent
         sx={{
@@ -130,7 +135,9 @@ export const SaveListDialog: React.FC<SaveListDialogProps> = ({
             ? 'Update the receiver list with your changes.'
             : isSaveAsCopy
               ? 'Save a copy of the receiver list with your changes.'
-              : 'Save the processed and validated receiver data for future use.'}
+              : saveMode === 'saveByTimezone'
+                ? 'Enter a base name below. Multiple lists will be created automatically, one for each timezone. Each list will be named "{base_name}_{timezone}" (e.g., "My List_EST", "My List_CST").'
+                : 'Save the processed and validated receiver data for future use.'}
         </Typography>
 
         <Typography variant="body2" sx={{ mb: 2 }}>
@@ -145,13 +152,18 @@ export const SaveListDialog: React.FC<SaveListDialogProps> = ({
         </Typography>
 
         <TextField
-          label="List Name"
+          label={saveMode === 'saveByTimezone' ? 'Base Name' : 'List Name'}
           value={formData.name}
           onChange={(e) =>
             setFormData((prev) => ({ ...prev, name: e.target.value }))
           }
           error={!!errors.name}
-          helperText={errors.name}
+          helperText={
+            errors.name ||
+            (saveMode === 'saveByTimezone'
+              ? 'This will be used as the base name for all timezone-specific lists'
+              : undefined)
+          }
           fullWidth
           margin="normal"
           inputProps={{ maxLength: 50 }}
@@ -190,7 +202,9 @@ export const SaveListDialog: React.FC<SaveListDialogProps> = ({
             ? 'Update List'
             : isSaveAsCopy
               ? 'Save as Copy'
-              : 'Save List'}
+              : saveMode === 'saveByTimezone'
+                ? 'Create Lists'
+                : 'Save List'}
         </Button>
       </DialogActions>
     </Dialog>

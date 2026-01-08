@@ -173,6 +173,46 @@ export const useReceiverLists = () => {
     [fullLists, saveLists]
   );
 
+  // Create multiple receiver lists at once (for batch operations like save by timezone)
+  const createReceiverListsBatch = useCallback(
+    (
+      listsData: Array<{
+        formData: ReceiverListForm;
+        receivers: ProcessedReceiver[];
+        sourceFileName?: string;
+      }>
+    ): ReceiverList[] => {
+      const newLists: ReceiverList[] = listsData.map(
+        ({ formData, receivers, sourceFileName }) => {
+          const validReceivers = receivers.filter((r) => r.isValid);
+          return {
+            id: crypto.randomUUID(),
+            name: formData.name,
+            description: formData.description,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            sourceFileName,
+            totalReceivers: receivers.length,
+            validReceivers: validReceivers.length,
+            receivers,
+          };
+        }
+      );
+
+      // Save all lists at once
+      const updatedLists = [...fullLists, ...newLists];
+      saveLists(updatedLists);
+
+      // Set the last list as current (or could set the first one)
+      if (newLists.length > 0) {
+        setCurrentList(newLists[newLists.length - 1]);
+      }
+
+      return newLists;
+    },
+    [fullLists, saveLists]
+  );
+
   // Update an existing receiver list
   const updateReceiverList = useCallback(
     (
@@ -303,6 +343,7 @@ export const useReceiverLists = () => {
     currentList,
     loading,
     createReceiverList,
+    createReceiverListsBatch,
     updateReceiverList,
     deleteReceiverList,
     loadReceiverList,

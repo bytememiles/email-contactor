@@ -19,6 +19,7 @@ import { useProfiles } from '@/hooks/useProfiles';
 import { useReceiverLists } from '@/hooks/useReceiverLists';
 import { useTemplates } from '@/hooks/useTemplates';
 import { EmailJob, JobForm } from '@/types/job';
+import { getTimezoneAbbreviation } from '@/utils/csvUtils';
 import { calculateSendTimes, getEarliestSendTime } from '@/utils/scheduling';
 
 export default function JobsPage() {
@@ -40,16 +41,31 @@ export default function JobsPage() {
       return;
     }
 
-    // Parse the send time from the form (format: "HH:mm")
-    const sendTime = data.sendTime || '10:00';
-    const [hours, minutes] = sendTime.split(':').map(Number);
-
     // Load the full receiver list to get receivers with timezone info
     const fullList = await loadReceiverList(data.receiverListId);
     if (!fullList) {
       showError('Could not load receiver list');
       return;
     }
+
+    // Validate that the list has only one timezone abbreviation (only for new jobs, not when editing)
+    if (!editingJob) {
+      const uniqueTimezoneAbbrs = new Set(
+        fullList.receivers
+          .map((r) => (r.timezone ? getTimezoneAbbreviation(r.timezone) : null))
+          .filter(Boolean)
+      );
+      if (uniqueTimezoneAbbrs.size !== 1) {
+        showError(
+          'Jobs can only be created for receiver lists with a single timezone. This list contains multiple timezones.'
+        );
+        return;
+      }
+    }
+
+    // Parse the send time from the form (format: "HH:mm")
+    const sendTime = data.sendTime || '10:00';
+    const [hours, minutes] = sendTime.split(':').map(Number);
 
     // Calculate timezone-aware send times
     const scheduledTimes = calculateSendTimes(
