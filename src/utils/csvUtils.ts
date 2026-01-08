@@ -36,6 +36,7 @@ function fuzzyMatchColumn(header: string, targetNames: string[]): boolean {
     // Handle common variations
     const variations: Record<string, string[]> = {
       firstname: ['first name', 'firstname', 'fname', 'given name'],
+      fullname: ['full name', 'fullname', 'name', 'complete name'],
       email: ['e-mail', 'email address', 'mail'],
       github: ['github url', 'github link', 'gh'],
       state: ['us state', 'state code', 'state abbreviation'],
@@ -111,22 +112,24 @@ export const parseCSV = (content: string): CSVUploadResult => {
     );
 
     // Validate required columns with fuzzy matching
+    // Note: firstName is optional if fullName is present
     const requiredColumns = [
-      {
-        names: ['first name', 'firstname', 'fname'],
-        mandatory: true,
-        field: 'firstName',
-      },
       { names: ['email', 'e-mail'], mandatory: true, field: 'email' },
       { names: ['state', 'us state'], mandatory: true, field: 'state' },
     ];
 
     const optionalColumns = [
+      {
+        names: ['first name', 'firstname', 'fname', 'given name'],
+        field: 'firstName',
+      },
+      {
+        names: ['full name', 'fullname', 'name'],
+        field: 'fullName',
+      },
       { names: ['no', 'number', 'num', '#'], field: 'no' },
       { names: ['github', 'github url'], field: 'github' },
       { names: ['telegram', 'telegram handle'], field: 'telegram' },
-      // Legacy columns for backward compatibility
-      { names: ['full name'], field: 'fullName' },
       { names: ['location'], field: 'location' },
     ];
 
@@ -149,6 +152,19 @@ export const parseCSV = (content: string): CSVUploadResult => {
       if (index !== -1) {
         columnIndices[col.field] = index;
       }
+    }
+
+    // Validate that we have either firstName or fullName
+    if (!columnIndices.firstName && !columnIndices.fullName) {
+      return {
+        success: false,
+        data: [],
+        errors: [
+          `Missing required column: First Name or Full Name. Found columns: ${headers.join(', ')}`,
+        ],
+        totalRows: lines.length - 1,
+        validRows: 0,
+      };
     }
 
     if (missingColumns.length > 0) {
@@ -182,6 +198,17 @@ export const parseCSV = (content: string): CSVUploadResult => {
         state: columns[columnIndices.state] || '',
       };
 
+      // Handle fullName - if present and firstName is empty, extract firstName from fullName
+      if (columnIndices.fullName !== undefined) {
+        const fullNameValue = columns[columnIndices.fullName] || '';
+        receiver.fullName = fullNameValue || undefined;
+
+        // If firstName is empty but fullName exists, extract first name from full name
+        if (!receiver.firstName?.trim() && fullNameValue.trim()) {
+          receiver.firstName = fullNameValue.trim().split(/\s+/)[0] || '';
+        }
+      }
+
       // Add optional fields if present
       if (columnIndices.no !== undefined) {
         receiver.no = columns[columnIndices.no] || undefined;
@@ -191,10 +218,6 @@ export const parseCSV = (content: string): CSVUploadResult => {
       }
       if (columnIndices.telegram !== undefined) {
         receiver.telegram = columns[columnIndices.telegram] || undefined;
-      }
-      // Legacy fields
-      if (columnIndices.fullName !== undefined) {
-        receiver.fullName = columns[columnIndices.fullName] || undefined;
       }
       if (columnIndices.location !== undefined) {
         receiver.location = columns[columnIndices.location] || undefined;
@@ -269,11 +292,23 @@ export const validateReceiver = (
   const errors: string[] = [];
   const warnings: string[] = [];
 
-  // Validate first name (mandatory)
-  if (!receiver.firstName?.trim()) {
-    errors.push('First name is required');
-  } else if (receiver.firstName.trim().length < 2) {
-    warnings.push('First name seems too short');
+  // Validate first name or full name (at least one is required)
+  if (!receiver.firstName?.trim() && !receiver.fullName?.trim()) {
+    errors.push('First name or full name is required');
+  } else {
+    // If we have fullName but no firstName, extract it
+    if (!receiver.firstName?.trim() && receiver.fullName?.trim()) {
+      // This will be handled during processing, but validate here
+      const extractedFirstName = receiver.fullName.trim().split(/\s+/)[0];
+      if (extractedFirstName.length < 2) {
+        warnings.push('Extracted first name seems too short');
+      }
+    } else if (
+      receiver.firstName?.trim() &&
+      receiver.firstName.trim().length < 2
+    ) {
+      warnings.push('First name seems too short');
+    }
   }
 
   // Validate emails (mandatory)
@@ -309,13 +344,8 @@ export const validateReceiver = (
     warnings.push(`Invalid GitHub URL format: ${receiver.github}`);
   }
 
-  // Legacy validation for backward compatibility
-  if (!receiver.firstName && receiver.fullName) {
-    // Use fullName as firstName if firstName is missing
-    if (!receiver.fullName.trim()) {
-      errors.push('Full name or first name is required');
-    }
-  }
+  // Ensure we have a valid name (either firstName or extracted from fullName)
+  // This validation is already handled above, but keep for clarity
 
   return {
     isValid: errors.length === 0,
@@ -358,15 +388,21 @@ export const processReceivers = async (
       // Normalize state
       const stateInfo = normalizeState(receiver.state || '');
 
+      // Extract firstName from fullName if firstName is missing
+      let firstName = receiver.firstName?.trim() || '';
+      if (!firstName && receiver.fullName?.trim()) {
+        firstName = receiver.fullName.trim().split(/\s+/)[0] || '';
+      }
+
       // Compute fullName from firstName or use provided fullName
       const fullName =
-        receiver.firstName?.trim() || receiver.fullName?.trim() || '';
+        receiver.fullName?.trim() || receiver.firstName?.trim() || '';
 
       return {
         id: crypto.randomUUID(),
         rowNumber: index + 1,
         no: receiver.no,
-        firstName: receiver.firstName?.trim() || '',
+        firstName,
         fullName,
         emails: emails.map((email) => email.toLowerCase()),
         originalEmailField: receiver.email?.trim() || '',
@@ -388,9 +424,10 @@ export const processReceivers = async (
 };
 
 /**
- * Format timezone for display
+ * Get timezone abbreviation (EST, CST, PST, etc.)
+ * Automatically handles DST (EDT, CDT, PDT, etc.)
  */
-export const formatTimezone = (timezone: string): string => {
+export const getTimezoneAbbreviation = (timezone: string): string => {
   try {
     const now = new Date();
     const formatter = new Intl.DateTimeFormat('en', {
@@ -400,10 +437,53 @@ export const formatTimezone = (timezone: string): string => {
 
     const parts = formatter.formatToParts(now);
     const timeZoneName =
-      parts.find((part) => part.type === 'timeZoneName')?.value || timezone;
+      parts.find((part) => part.type === 'timeZoneName')?.value || '';
 
-    return `${timezone} (${timeZoneName})`;
+    // Return the abbreviation (e.g., "EST", "EDT", "CST", "CDT", "PST", "PDT")
+    return timeZoneName || timezone;
   } catch {
     return timezone;
   }
+};
+
+/**
+ * Get current time in a specific timezone
+ */
+export const getCurrentTimeInTimezone = (
+  timezone: string,
+  options?: {
+    includeDate?: boolean;
+    includeSeconds?: boolean;
+  }
+): string => {
+  try {
+    const now = new Date();
+    const formatOptions: Intl.DateTimeFormatOptions = {
+      timeZone: timezone,
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+    };
+
+    if (options?.includeDate) {
+      formatOptions.month = 'short';
+      formatOptions.day = 'numeric';
+    }
+
+    if (options?.includeSeconds) {
+      formatOptions.second = '2-digit';
+    }
+
+    const formatter = new Intl.DateTimeFormat('en-US', formatOptions);
+    return formatter.format(now);
+  } catch {
+    return 'N/A';
+  }
+};
+
+/**
+ * Format timezone for display (legacy function - now returns abbreviation)
+ */
+export const formatTimezone = (timezone: string): string => {
+  return getTimezoneAbbreviation(timezone);
 };

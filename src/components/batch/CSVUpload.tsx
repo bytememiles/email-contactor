@@ -189,14 +189,14 @@ export const CSVUpload: React.FC<CSVUploadProps> = ({
             <ListItem sx={{ py: 0.5 }}>
               <ListItemIcon sx={{ minWidth: 20 }}>•</ListItemIcon>
               <ListItemText
-                primary="Required columns: First name, Email, State (US states)"
+                primary="Required columns: First name (or Full name), Email, State (US states)"
                 primaryTypographyProps={{ variant: 'body2' }}
               />
             </ListItem>
             <ListItem sx={{ py: 0.5 }}>
               <ListItemIcon sx={{ minWidth: 20 }}>•</ListItemIcon>
               <ListItemText
-                primary="Optional columns: No, Github (URL), Telegram"
+                primary="Optional columns: No, Github (URL), Telegram, Full name (if First name is not provided)"
                 primaryTypographyProps={{ variant: 'body2' }}
               />
             </ListItem>

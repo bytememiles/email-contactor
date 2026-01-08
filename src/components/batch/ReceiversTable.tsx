@@ -26,7 +26,12 @@ import {
 } from '@mui/material';
 
 import { ProcessedReceiver } from '@/types/receiver';
-import { formatTimezone } from '@/utils/csvUtils';
+import {
+  formatTimezone,
+  getCurrentTimeInTimezone,
+  getTimezoneAbbreviation,
+} from '@/utils/csvUtils';
+import { getStateTimezone } from '@/utils/stateTimezone';
 
 interface ReceiversTableProps {
   receivers: ProcessedReceiver[];
@@ -54,6 +59,17 @@ export const ReceiversTable: React.FC<ReceiversTableProps> = ({
     useState<HTMLElement | null>(null);
   const [showStateFilter, setShowStateFilter] = useState(false);
   const [selectedStates, setSelectedStates] = useState<string[]>([]);
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  // Update current time every second when timezone or state filter is active
+  useEffect(() => {
+    if (selectedTimezones.length > 0 || selectedStates.length > 0) {
+      const interval = setInterval(() => {
+        setCurrentTime(new Date());
+      }, 1000);
+      return () => clearInterval(interval);
+    }
+  }, [selectedTimezones.length, selectedStates.length]);
 
   // Get unique timezones from receivers
   const uniqueTimezones = useMemo(() => {
@@ -504,9 +520,17 @@ export const ReceiversTable: React.FC<ReceiversTableProps> = ({
                     title={
                       <Box>
                         <Typography variant="body2">
-                          {formatTimezone(receiver.timezone)}
+                          {receiver.timezone}
                         </Typography>
-                        <Typography variant="caption" color="inherit">
+                        <Typography variant="body2" sx={{ mt: 0.5 }}>
+                          Current Time:{' '}
+                          {getCurrentTimeInTimezone(receiver.timezone)}
+                        </Typography>
+                        <Typography
+                          variant="caption"
+                          color="inherit"
+                          sx={{ mt: 0.5, display: 'block' }}
+                        >
                           Source:{' '}
                           {receiver.timezoneSource === 'api'
                             ? 'External API'
@@ -521,7 +545,7 @@ export const ReceiversTable: React.FC<ReceiversTableProps> = ({
                       sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}
                     >
                       <Typography variant="body2">
-                        {receiver.timezone}
+                        {getTimezoneAbbreviation(receiver.timezone)}
                       </Typography>
                       <Chip
                         label={receiver.timezoneSource}
@@ -589,6 +613,62 @@ export const ReceiversTable: React.FC<ReceiversTableProps> = ({
               <Typography variant="caption" color="text.secondary">
                 Select timezones to filter receivers
               </Typography>
+              {selectedTimezones.length === 1 && (
+                <Box
+                  sx={{
+                    mt: 1.5,
+                    p: 1,
+                    bgcolor: 'action.hover',
+                    borderRadius: 1,
+                  }}
+                >
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    display="block"
+                  >
+                    Current Time:
+                  </Typography>
+                  <Typography
+                    variant="body2"
+                    sx={{ fontWeight: 600 }}
+                    key={currentTime.getTime()}
+                  >
+                    {getCurrentTimeInTimezone(selectedTimezones[0], {
+                      includeDate: true,
+                    })}{' '}
+                    {getTimezoneAbbreviation(selectedTimezones[0])}
+                  </Typography>
+                </Box>
+              )}
+              {selectedTimezones.length > 1 && (
+                <Box sx={{ mt: 1.5 }}>
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    display="block"
+                    sx={{ mb: 0.5 }}
+                  >
+                    Current Times:
+                  </Typography>
+                  {selectedTimezones.map((tz) => (
+                    <Box
+                      key={`${tz}-${currentTime.getTime()}`}
+                      sx={{
+                        p: 0.5,
+                        bgcolor: 'action.hover',
+                        borderRadius: 0.5,
+                        mb: 0.5,
+                      }}
+                    >
+                      <Typography variant="caption" sx={{ fontWeight: 600 }}>
+                        {getTimezoneAbbreviation(tz)}:{' '}
+                        {getCurrentTimeInTimezone(tz)}
+                      </Typography>
+                    </Box>
+                  ))}
+                </Box>
+              )}
             </Box>
             <Box sx={{ p: 1 }}>
               <MenuItem
@@ -622,9 +702,11 @@ export const ReceiversTable: React.FC<ReceiversTableProps> = ({
                   >
                     <Checkbox checked={selectedTimezones.includes(timezone)} />
                     <Box sx={{ flex: 1 }}>
-                      <Typography variant="body2">{timezone}</Typography>
+                      <Typography variant="body2">
+                        {getTimezoneAbbreviation(timezone)}
+                      </Typography>
                       <Typography variant="caption" color="text.secondary">
-                        {formatTimezone(timezone)}
+                        {timezone} • {getCurrentTimeInTimezone(timezone)}
                       </Typography>
                     </Box>
                     <Chip
@@ -668,6 +750,99 @@ export const ReceiversTable: React.FC<ReceiversTableProps> = ({
               <Typography variant="caption" color="text.secondary">
                 Select states to filter receivers
               </Typography>
+              {selectedStates.length === 1 &&
+                (() => {
+                  const stateTimezone = getStateTimezone(selectedStates[0]);
+                  if (stateTimezone) {
+                    return (
+                      <Box
+                        sx={{
+                          mt: 1.5,
+                          p: 1,
+                          bgcolor: 'action.hover',
+                          borderRadius: 1,
+                        }}
+                      >
+                        <Typography
+                          variant="caption"
+                          color="text.secondary"
+                          display="block"
+                        >
+                          Current Time ({getTimezoneAbbreviation(stateTimezone)}
+                          ):
+                        </Typography>
+                        <Typography
+                          variant="body2"
+                          sx={{ fontWeight: 600 }}
+                          key={currentTime.getTime()}
+                        >
+                          {getCurrentTimeInTimezone(stateTimezone, {
+                            includeDate: true,
+                          })}
+                        </Typography>
+                      </Box>
+                    );
+                  }
+                  return null;
+                })()}
+              {selectedStates.length > 1 &&
+                (() => {
+                  const stateTimezones = selectedStates
+                    .map((state) => ({
+                      state,
+                      timezone: getStateTimezone(state),
+                    }))
+                    .filter((item) => item.timezone !== null);
+
+                  // Group by timezone to avoid duplicates
+                  const uniqueTimezones = new Map<string, string[]>();
+                  stateTimezones.forEach(({ state, timezone }) => {
+                    if (timezone) {
+                      if (!uniqueTimezones.has(timezone)) {
+                        uniqueTimezones.set(timezone, []);
+                      }
+                      uniqueTimezones.get(timezone)!.push(state);
+                    }
+                  });
+
+                  if (uniqueTimezones.size > 0) {
+                    return (
+                      <Box sx={{ mt: 1.5 }}>
+                        <Typography
+                          variant="caption"
+                          color="text.secondary"
+                          display="block"
+                          sx={{ mb: 0.5 }}
+                        >
+                          Current Times:
+                        </Typography>
+                        {Array.from(uniqueTimezones.entries()).map(
+                          ([timezone, states]) => (
+                            <Box
+                              key={`${timezone}-${currentTime.getTime()}`}
+                              sx={{
+                                p: 0.5,
+                                bgcolor: 'action.hover',
+                                borderRadius: 0.5,
+                                mb: 0.5,
+                              }}
+                            >
+                              <Typography
+                                variant="caption"
+                                sx={{ fontWeight: 600 }}
+                              >
+                                {getTimezoneAbbreviation(timezone)} (
+                                {states.join(', ')}):{' '}
+                                {getCurrentTimeInTimezone(timezone)}
+                              </Typography>
+                            </Box>
+                          )
+                        )}
+                      </Box>
+                    );
+                  }
+                  return null;
+                })()}
             </Box>
             <Box sx={{ p: 1 }}>
               <MenuItem
@@ -693,6 +868,7 @@ export const ReceiversTable: React.FC<ReceiversTableProps> = ({
             <MenuList dense>
               {uniqueStates.map((state) => {
                 const count = getStateCount(state);
+                const stateTimezone = getStateTimezone(state);
                 return (
                   <MenuItem
                     key={state}
@@ -702,6 +878,12 @@ export const ReceiversTable: React.FC<ReceiversTableProps> = ({
                     <Checkbox checked={selectedStates.includes(state)} />
                     <Box sx={{ flex: 1 }}>
                       <Typography variant="body2">{state}</Typography>
+                      {stateTimezone && (
+                        <Typography variant="caption" color="text.secondary">
+                          {getTimezoneAbbreviation(stateTimezone)} •{' '}
+                          {getCurrentTimeInTimezone(stateTimezone)}
+                        </Typography>
+                      )}
                     </Box>
                     <Chip
                       label={count}
